@@ -611,7 +611,7 @@ function renderActorList() {
         return `
           <div class="mob-card" style="border-left: 3px solid var(--acc);">
             <div class="mob-left">
-              <div style="font-size: 20px; width: 36px; text-align: center;">🧙</div>
+              <img src="jobicons/icon_job_${a.id}.png" onerror="this.onerror=null;this.src='jobicons/icon_job_0.png';" class="mob-icon" alt="">
               <div>
                 <div>
                   <span class="mob-name" style="color:var(--acc);">${a.name}</span>
