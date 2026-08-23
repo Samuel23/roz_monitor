@@ -111,6 +111,17 @@ nav.bottom-nav {
 table.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
 table.tbl td { padding: 5px 0; border-bottom: 1px solid #1b1f2b; }
 table.tbl td:last-child { text-align: right; font-weight: 700; }
+.item-row { display: flex; align-items: center; gap: 8px; }
+.item-icon { width: 22px; height: 22px; image-rendering: pixelated; object-fit: contain; vertical-align: middle; }
+.item-link { color: var(--fg); text-decoration: none; font-weight: 500; }
+.item-link:hover { color: var(--gold); text-decoration: underline; }
+.mob-card { display: flex; align-items: center; justify-content: space-between; background: var(--bar); border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; }
+.mob-left { display: flex; align-items: center; gap: 8px; }
+.mob-icon { width: 32px; height: 32px; image-rendering: pixelated; object-fit: contain; }
+.mob-name { font-size: 12px; font-weight: 700; color: var(--fg); text-decoration: none; }
+.mob-name:hover { color: var(--acc); text-decoration: underline; }
+.mob-hp { font-size: 10px; color: var(--dim); }
+.boss-tag { background: rgba(255, 77, 77, 0.25); color: var(--bad); padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-left: 4px; border: 1px solid var(--bad); }
 .chat-box { max-height: 240px; overflow-y: auto; font-size: 12px; }
 .msg-row { padding: 4px 0; border-bottom: 1px solid #1b1f2b; }
 .msg-who { color: var(--acc); font-weight: 600; }
@@ -224,8 +235,12 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
 <!-- TAB: MINIMAP -->
 <div id="tab-map" class="tab-content">
   <div class="card">
-    <div class="card-title"><span>Live Map</span><span id="mapCoords" class="acc">0, 0</span></div>
+    <div class="card-title"><span id="mapCardTitle">Live Map</span><span id="mapCoords" class="acc">0, 0</span></div>
     <canvas id="mapCanvas" width="256" height="256"></canvas>
+  </div>
+  <div class="card" id="mobCard" style="display:none;">
+    <div class="card-title">Nearby Monsters (<span id="mobCount" class="acc">0</span>)</div>
+    <div id="mobListContainer"></div>
   </div>
 </div>
 
@@ -489,7 +504,7 @@ function alarmLevelUp() {
 }
 
 // --- Minimap Canvas ---
-function drawMap(loc) {
+function drawMap(loc, monsters = []) {
   const canvas = $('mapCanvas');
   const g = canvas.getContext('2d');
   const S = canvas.width;
@@ -512,7 +527,7 @@ function drawMap(loc) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = imgUrl;
-    img.onload = () => { mapCache[mapName] = img; drawMap(loc); };
+    img.onload = () => { mapCache[mapName] = img; drawMap(loc, monsters); };
   } else {
     g.drawImage(mapCache[mapName], 0, 0, S, S);
   }
@@ -521,21 +536,75 @@ function drawMap(loc) {
   const cells = loc.cells || [400, 400];
   const maxC = Math.max(cells[0], cells[1]) || 400;
   const offX = (maxC - cells[0]) / 2, offY = (maxC - cells[1]) / 2;
-  const px = (x + offX) / maxC * S;
-  const py = (maxC - (y + offY)) / maxC * S;
+
+  // Draw walked trail
+  const trail = loc.trail || [];
+  if (trail.length > 1) {
+    g.strokeStyle = '#7fd1ff'; g.lineWidth = 1.5;
+    g.beginPath();
+    trail.forEach((p, idx) => {
+      const tx = (p[0] + offX) / maxC * S;
+      const ty = (maxC - (p[1] + offY)) / maxC * S;
+      if (idx === 0) g.moveTo(tx, ty); else g.lineTo(tx, ty);
+    });
+    g.stroke();
+  }
+
+  // Draw Nearby Monsters on Radar
+  monsters.forEach(m => {
+    const mx = (m.x + offX) / maxC * S;
+    const my = (maxC - (m.y + offY)) / maxC * S;
+    if (m.boss) {
+      g.fillStyle = '#ffd479'; g.strokeStyle = '#ff4d4d'; g.lineWidth = 1.5;
+      g.beginPath(); g.arc(mx, my, 5.5, 0, Math.PI * 2); g.fill(); g.stroke();
+    } else {
+      g.fillStyle = '#ff4d4d'; g.strokeStyle = '#10131a'; g.lineWidth = 1;
+      g.beginPath(); g.arc(mx, my, 3.5, 0, Math.PI * 2); g.fill(); g.stroke();
+    }
+  });
 
   // Draw Player Dot
+  const px = (x + offX) / maxC * S;
+  const py = (maxC - (y + offY)) / maxC * S;
   g.strokeStyle = '#ffd479'; g.fillStyle = '#ffd479';
   g.beginPath(); g.arc(px, py, 7, 0, Math.PI * 2); g.stroke();
   g.beginPath(); g.arc(px, py, 3.5, 0, Math.PI * 2); g.fill();
+
+  // Render Monster List with MidgardHub images below Map
+  if (monsters && monsters.length > 0) {
+    $('mobCard').style.display = 'block';
+    $('mobCount').textContent = monsters.length;
+    $('mobListContainer').innerHTML = monsters.map(m => `
+      <div class="mob-card">
+        <div class="mob-left">
+          <img src="https://midgardhub.com/images/monsters/${m.id}.gif" onerror="this.src='https://midgardhub.com/images/monsters/${m.id}.png';this.onerror=null;" class="mob-icon" alt="">
+          <div>
+            <a href="https://midgardhub.com/database/monsters/${m.id}" target="_blank" class="mob-name">${m.name}</a>
+            ${m.boss ? '<span class="boss-tag">BOSS</span>' : ''}
+            <div class="mob-hp">Coords: (${m.x}, ${m.y})${m.hp ? ` · HP: ${m.hp.toLocaleString()}` : ''}</div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    $('mobCard').style.display = 'none';
+  }
 }
 
 function renderInv() {
   const filter = ($('invSearch').value || '').toLowerCase();
   const filtered = currentInv.filter(i => (i.name || `item#${i.itid}`).toLowerCase().includes(filter));
-  $('invTable').innerHTML = filtered.slice(0, 30).map(i =>
-    `<tr><td>${i.name || ('item#' + i.itid)}</td><td>${i.count.toLocaleString()}</td></tr>`
-  ).join('') || '<tr><td style="color:var(--dim)">No items found</td><td></td></tr>';
+  $('invTable').innerHTML = filtered.slice(0, 40).map(i => `
+    <tr>
+      <td>
+        <div class="item-row">
+          <img src="https://midgardhub.com/images/items/${i.itid}.gif" onerror="this.src='https://midgardhub.com/images/items/${i.itid}.png';this.onerror=null;" class="item-icon" alt="">
+          <a href="https://midgardhub.com/database/items/${i.itid}" target="_blank" class="item-link">${i.name || ('Item #' + i.itid)}</a>
+        </div>
+      </td>
+      <td style="text-align:right;font-weight:700;">${i.count.toLocaleString()}</td>
+    </tr>
+  `).join('') || '<tr><td style="color:var(--dim)">No items found</td><td></td></tr>';
 }
 
 // --- Main Real-Time Tick ---
@@ -565,7 +634,8 @@ async function tick() {
     $('hdrBackend').textContent = (d.capture || {}).backend || 'LIVE';
 
     const c = d.character || {}, e = d.exp || {}, v = d.vitals || {}, k = d.combat || {}, z = d.zeny || {}, l = d.loot || {};
-    $('charName').textContent = c.name || 'ROZ Monitor';
+    const jobStr = c.job ? ` (${c.job})` : '';
+    $('charName').textContent = c.name ? `${c.name}${jobStr}` : 'ROZ Monitor';
     const loc = d.location || {};
     $('charLoc').textContent = loc.map ? `${loc.map} (${loc.x || 0}, ${loc.y || 0})` : 'in-game';
 
@@ -622,16 +692,28 @@ async function tick() {
     ).join('') : '<span style="color:var(--dim)">No active buffs</span>';
 
     // Loot & Inventory
-    const lootMap = l.items || {};
-    const lootList = Object.entries(lootMap).sort((a,b) => b[1] - a[1]);
+    const lootList = l.items || [];
     $('lootRate').textContent = l.per_hour ? `${n(l.per_hour)}/h` : '';
-    $('lootTable').innerHTML = lootList.length ? lootList.slice(0, 30).map(([item, count]) =>
-      `<tr><td>${item}</td><td>${count.toLocaleString()}</td></tr>`
-    ).join('') : '<tr><td style="color:var(--dim)">Nothing dropped yet</td><td></td></tr>';
+    if (Array.isArray(lootList)) {
+      $('lootTable').innerHTML = lootList.length ? lootList.slice(0, 40).map(item => `
+        <tr>
+          <td>
+            <div class="item-row">
+              <img src="https://midgardhub.com/images/items/${item.itid}.gif" onerror="this.src='https://midgardhub.com/images/items/${item.itid}.png';this.onerror=null;" class="item-icon" alt="">
+              <a href="https://midgardhub.com/database/items/${item.itid}" target="_blank" class="item-link">${item.name || ('Item #' + item.itid)}</a>
+            </div>
+          </td>
+          <td style="text-align:right;font-weight:700;">${item.count.toLocaleString()}</td>
+        </tr>
+      `).join('') : '<tr><td style="color:var(--dim)">Nothing dropped yet</td><td></td></tr>';
+    }
 
     currentInv = (d.inventory || []).slice().sort((a,b) => b.count - a.count);
     $('invCount').textContent = currentInv.length;
     renderInv();
+
+    // Map drawing with live monsters
+    drawMap(loc, d.monsters || []);
 
     // Chat
     const msgs = d.messages || [];
