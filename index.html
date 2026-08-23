@@ -95,13 +95,41 @@ nav.bottom-nav {
 }
 .nav-item.active { color: var(--acc); }
 .nav-icon { font-size: 16px; margin-bottom: 2px; }
-.tab-content { display: none; }
+.tab-content { display: none; max-width: 860px; margin: 0 auto; padding: 12px; }
 .tab-content.active { display: block; }
 
+.map-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .map-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+    align-items: start;
+  }
+}
+.map-canvas-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
 #mapCanvas {
-  width: 100%; aspect-ratio: 1/1;
-  background: #10131a; border-radius: 6px;
-  display: block; margin: 0 auto;
+  width: 100%;
+  max-width: 440px;
+  max-height: 55vh;
+  aspect-ratio: 1/1;
+  object-fit: contain;
+  background: #10131a;
+  border-radius: 8px;
+  display: block;
+  margin: 0 auto;
+}
+.mob-scroll-list {
+  max-height: 440px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .buff-pill {
   display: inline-flex; align-items: center; gap: 4px;
@@ -115,12 +143,12 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
 .item-icon { width: 22px; height: 22px; image-rendering: pixelated; object-fit: contain; vertical-align: middle; }
 .item-link { color: var(--fg); text-decoration: none; font-weight: 500; }
 .item-link:hover { color: var(--gold); text-decoration: underline; }
-.mob-card { display: flex; align-items: center; justify-content: space-between; background: var(--bar); border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; }
-.mob-left { display: flex; align-items: center; gap: 8px; }
-.mob-icon { width: 32px; height: 32px; image-rendering: pixelated; object-fit: contain; }
-.mob-name { font-size: 12px; font-weight: 700; color: var(--fg); text-decoration: none; }
+.mob-card { display: flex; align-items: center; justify-content: space-between; background: var(--bar); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; border: 1px solid var(--card-border); }
+.mob-left { display: flex; align-items: center; gap: 10px; }
+.mob-icon { width: 36px; height: 36px; image-rendering: pixelated; object-fit: contain; }
+.mob-name { font-size: 13px; font-weight: 700; color: var(--fg); text-decoration: none; }
 .mob-name:hover { color: var(--acc); text-decoration: underline; }
-.mob-hp { font-size: 10px; color: var(--dim); }
+.mob-hp { font-size: 11px; color: var(--dim); margin-top: 2px; }
 .boss-tag { background: rgba(255, 77, 77, 0.25); color: var(--bad); padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-left: 4px; border: 1px solid var(--bad); }
 .chat-box { max-height: 240px; overflow-y: auto; font-size: 12px; }
 .msg-row { padding: 4px 0; border-bottom: 1px solid #1b1f2b; }
@@ -234,13 +262,17 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
 
 <!-- TAB: MINIMAP -->
 <div id="tab-map" class="tab-content">
-  <div class="card">
-    <div class="card-title"><span id="mapCardTitle">Live Map</span><span id="mapCoords" class="acc">0, 0</span></div>
-    <canvas id="mapCanvas" width="256" height="256"></canvas>
-  </div>
-  <div class="card" id="mobCard" style="display:none;">
-    <div class="card-title">Nearby Monsters (<span id="mobCount" class="acc">0</span>)</div>
-    <div id="mobListContainer"></div>
+  <div class="map-grid">
+    <div class="card">
+      <div class="card-title"><span id="mapCardTitle">Live Map</span><span id="mapCoords" class="acc">0, 0</span></div>
+      <div class="map-canvas-wrap">
+        <canvas id="mapCanvas" width="256" height="256"></canvas>
+      </div>
+    </div>
+    <div class="card" id="mobCard" style="display:none;">
+      <div class="card-title">Nearby Monsters (<span id="mobCount" class="acc">0</span>)</div>
+      <div id="mobListContainer" class="mob-scroll-list"></div>
+    </div>
   </div>
 </div>
 
@@ -577,13 +609,16 @@ function drawMap(loc, monsters = []) {
     $('mobListContainer').innerHTML = monsters.map(m => `
       <div class="mob-card">
         <div class="mob-left">
-          <img src="https://midgardhub.com/images/monsters/${m.id}.gif" onerror="this.src='https://midgardhub.com/images/monsters/${m.id}.png';this.onerror=null;" class="mob-icon" alt="">
+          <img src="https://midgardhub.com/images/monsters/${m.id}.gif" onerror="this.onerror=null;this.src='https://midgardhub.com/images/monsters/${m.id}.png';" class="mob-icon" alt="">
           <div>
-            <a href="https://midgardhub.com/database/monsters/${m.id}" target="_blank" class="mob-name">${m.name}</a>
-            ${m.boss ? '<span class="boss-tag">BOSS</span>' : ''}
-            <div class="mob-hp">Coords: (${m.x}, ${m.y})${m.hp ? ` · HP: ${m.hp.toLocaleString()}` : ''}</div>
+            <div>
+              <a href="https://midgardhub.com/database/monsters/${m.id}" target="_blank" class="mob-name">${m.name || ('Mob #' + m.id)}</a>
+              ${m.boss ? '<span class="boss-tag">BOSS</span>' : ''}
+            </div>
+            <div class="mob-hp">Pos: (${m.x}, ${m.y})${m.hp && m.hp > 0 ? ` · HP: ${m.hp.toLocaleString()}` : ''}</div>
           </div>
         </div>
+        <a href="https://midgardhub.com/database/monsters/${m.id}" target="_blank" style="color:var(--dim);font-size:11px;text-decoration:none;padding:4px 6px;border:1px solid #2a3142;border-radius:4px;">↗ DB</a>
       </div>
     `).join('');
   } else {
