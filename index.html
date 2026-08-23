@@ -193,9 +193,12 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
 <body>
 
 <header>
-  <div>
-    <div class="hdr-title" id="charName">ROZ Live Monitor</div>
-    <div class="hdr-sub"><span id="liveDot" class="live-dot off"></span><span id="charLoc">connecting…</span></div>
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <img id="charJobIcon" src="jobicons/icon_job_0.png" onerror="this.style.display='none'" class="mob-icon" style="width: 32px; height: 32px; display: none; object-fit: contain; border-radius: 4px; background: #1b1f2b; padding: 2px;" alt="">
+    <div>
+      <div class="hdr-title" id="charName">ROZ Live Monitor</div>
+      <div class="hdr-sub"><span id="liveDot" class="live-dot off"></span><span id="charLoc">connecting…</span></div>
+    </div>
   </div>
   <div style="text-align: right;">
     <div style="font-size: 10px; color: var(--dim);" id="hdrRoom">ROOM: -</div>
@@ -835,8 +838,18 @@ async function tick() {
     $('hdrBackend').textContent = (d.capture || {}).backend || 'LIVE';
 
     const c = d.character || {}, e = d.exp || {}, v = d.vitals || {}, k = d.combat || {}, z = d.zeny || {}, l = d.loot || {};
-    const jobStr = c.job ? ` (${c.job})` : '';
-    $('charName').textContent = c.name ? `${c.name}${jobStr}` : 'ROZ Monitor';
+    const jobTitle = c.job ? ` - ${c.job}` : '';
+    $('charName').textContent = c.name ? `${c.name}${jobTitle}` : 'ROZ Live Monitor';
+
+    const iconEl = $('charJobIcon');
+    if (iconEl) {
+      if (c.job_id != null) {
+        iconEl.src = `jobicons/icon_job_${c.job_id}.png`;
+        iconEl.style.display = 'block';
+      } else {
+        iconEl.style.display = 'none';
+      }
+    }
     const loc = d.location || {};
     $('charLoc').textContent = loc.map ? `${loc.map} (${loc.x || 0}, ${loc.y || 0})` : 'in-game';
 
