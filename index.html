@@ -461,38 +461,46 @@ async function resolveAndConnect() {
           if (item.message) {
             const data = JSON.parse(item.message);
             if (data.url) {
-              const nowSec = Date.now() / 1000;
-              const msgTs = data.ts || item.time || 0;
-              if (nowSec - msgTs > 60) {
-                // Heartbeat older than 60s -> PC is offline
-                $('charLoc').innerHTML = '<span style="color:var(--bad)">PC Offline</span>';
-                $('liveDot').classList.add('off');
-                activeStreamUrl = '';
-                continue;
+              const candidateUrl = data.url.replace(/[/]+$/, '');
+              // Test candidate URL directly to confirm live connectivity
+              try {
+                const pin = getPin() || data.pin;
+                const testRes = await fetch(`${candidateUrl}/status.json?t=${Date.now()}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`, { signal: AbortSignal.timeout(4000) });
+                if (testRes.ok || testRes.status === 401 || testRes.status === 403) {
+                  activeStreamUrl = candidateUrl;
+                  if (data.pin && !getPin()) localStorage.setItem('roz_pin', data.pin);
+                  $('cfgStreamUrl').textContent = activeStreamUrl;
+                  $('charLoc').textContent = 'connected!';
+                  $('liveDot').classList.remove('off');
+                  tick();
+                  return;
+                }
+              } catch (connErr) {
+                // If candidate URL timed out, continue looking for other broadcast messages
               }
-              activeStreamUrl = data.url.replace(/[/]+$/, '');
-              if (data.pin && !getPin()) localStorage.setItem('roz_pin', data.pin);
-              $('cfgStreamUrl').textContent = activeStreamUrl;
-              $('charLoc').textContent = 'connected!';
-              $('liveDot').classList.remove('off');
-              tick();
-              return;
             }
           }
         } catch(e){}
       }
     }
-    $('charLoc').innerHTML = '<span style="color:var(--bad)">PC Offline</span>';
+    $('charLoc').innerHTML = '<span style="color:var(--bad);cursor:pointer;" onclick="resolveAndConnect()">🔴 PC Offline (retrying…)</span>';
     $('liveDot').classList.add('off');
     activeStreamUrl = '';
   } catch(err) {
-    $('charLoc').innerHTML = '<span style="color:var(--bad)">PC Offline</span>';
+    $('charLoc').innerHTML = '<span style="color:var(--bad);cursor:pointer;" onclick="resolveAndConnect()">🔴 PC Offline (retrying…)</span>';
     $('liveDot').classList.add('off');
     activeStreamUrl = '';
   } finally {
     isResolvingStream = false;
   }
 }
+
+// Background auto-resolver every 5s when offline
+setInterval(() => {
+  if (!activeStreamUrl && getRoom()) {
+    resolveAndConnect();
+  }
+}, 5000);
 
 // --- Navigation ---
 function showTab(name) {
