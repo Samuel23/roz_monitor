@@ -269,9 +269,11 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
         <canvas id="mapCanvas" width="256" height="256"></canvas>
       </div>
     </div>
-    <div class="card" id="mobCard" style="display:none;">
+    <div class="card" id="mobCard">
       <div class="card-title">Nearby Monsters (<span id="mobCount" class="acc">0</span>)</div>
-      <div id="mobListContainer" class="mob-scroll-list"></div>
+      <div id="mobListContainer" class="mob-scroll-list">
+        <div style="color:var(--dim);text-align:center;padding:24px 10px;font-size:12px;">No monsters currently in sight<br><span style="font-size:11px;color:#50576a;">Walk near monsters to track on radar</span></div>
+      </div>
     </div>
   </div>
 </div>
@@ -587,10 +589,13 @@ function drawMap(loc, monsters = []) {
     const mx = (m.x + offX) / maxC * S;
     const my = (maxC - (m.y + offY)) / maxC * S;
     if (m.boss) {
-      g.fillStyle = '#ffd479'; g.strokeStyle = '#ff4d4d'; g.lineWidth = 1.5;
-      g.beginPath(); g.arc(mx, my, 5.5, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.fillStyle = '#ffd479'; g.strokeStyle = '#ff4d4d'; g.lineWidth = 2;
+      g.beginPath(); g.arc(mx, my, 6, 0, Math.PI * 2); g.fill(); g.stroke();
     } else {
-      g.fillStyle = '#ff4d4d'; g.strokeStyle = '#10131a'; g.lineWidth = 1;
+      // High-visibility crimson monster blip
+      g.fillStyle = 'rgba(255, 77, 77, 0.4)';
+      g.beginPath(); g.arc(mx, my, 6, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#ff3333'; g.strokeStyle = '#ffffff'; g.lineWidth = 1;
       g.beginPath(); g.arc(mx, my, 3.5, 0, Math.PI * 2); g.fill(); g.stroke();
     }
   });
@@ -602,10 +607,9 @@ function drawMap(loc, monsters = []) {
   g.beginPath(); g.arc(px, py, 7, 0, Math.PI * 2); g.stroke();
   g.beginPath(); g.arc(px, py, 3.5, 0, Math.PI * 2); g.fill();
 
-  // Render Monster List with MidgardHub images below Map
+  // Render Monster List with MidgardHub images
+  $('mobCount').textContent = monsters ? monsters.length : 0;
   if (monsters && monsters.length > 0) {
-    $('mobCard').style.display = 'block';
-    $('mobCount').textContent = monsters.length;
     $('mobListContainer').innerHTML = monsters.map(m => `
       <div class="mob-card">
         <div class="mob-left">
@@ -622,7 +626,11 @@ function drawMap(loc, monsters = []) {
       </div>
     `).join('');
   } else {
-    $('mobCard').style.display = 'none';
+    $('mobListContainer').innerHTML = `
+      <div style="color:var(--dim);text-align:center;padding:24px 10px;font-size:12px;">
+        No monsters currently in sight<br>
+        <span style="font-size:11px;color:#50576a;">Walk near monsters to track on radar</span>
+      </div>`;
   }
 }
 
