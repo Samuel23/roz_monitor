@@ -410,6 +410,16 @@ function getPin() {
   return (localStorage.getItem('roz_pin') || '').toUpperCase();
 }
 
+function getStreamParam() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const s = urlParams.get('stream') || urlParams.get('s') || urlParams.get('url');
+  if (s) {
+    localStorage.setItem('roz_stream_url', s);
+    return s;
+  }
+  return localStorage.getItem('roz_stream_url') || '';
+}
+
 function submitPairing() {
   const room = $('pairRoomInput').value.trim().toUpperCase();
   const pin = $('pairPinInput').value.trim().toUpperCase();
@@ -430,6 +440,7 @@ function rePair() {
 function unpair() {
   localStorage.removeItem('roz_room');
   localStorage.removeItem('roz_pin');
+  localStorage.removeItem('roz_stream_url');
   activeStreamUrl = '';
   window.location.href = window.location.pathname;
 }
@@ -450,39 +461,77 @@ async function resolveAndConnect() {
   $('charLoc').textContent = 'finding PC…';
 
   try {
-    const topic = `roz_${room.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-    const res = await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}/json?poll=1&since=all`);
-    if (res.ok) {
-      const text = await res.text();
-      const lines = text.trim().split('\n');
-      for (let i = lines.length - 1; i >= 0; i--) {
-        try {
-          const item = JSON.parse(lines[i]);
-          if (item.message) {
-            const data = JSON.parse(item.message);
-            if (data.url) {
-              const candidateUrl = data.url.replace(/[/]+$/, '');
-              // Test candidate URL directly to confirm live connectivity
-              try {
-                const pin = getPin() || data.pin;
-                const testRes = await fetch(`${candidateUrl}/status.json?t=${Date.now()}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`, { signal: AbortSignal.timeout(4000) });
-                if (testRes.ok || testRes.status === 401 || testRes.status === 403) {
-                  activeStreamUrl = candidateUrl;
-                  if (data.pin && !getPin()) localStorage.setItem('roz_pin', data.pin);
-                  $('cfgStreamUrl').textContent = activeStreamUrl;
-                  $('charLoc').textContent = 'connected!';
-                  $('liveDot').classList.remove('off');
-                  tick();
-                  return;
-                }
-              } catch (connErr) {
-                // If candidate URL timed out, continue looking for other broadcast messages
-              }
-            }
-          }
-        } catch(e){}
-      }
+    const pin = getPin();
+
+    // Tier 1: Direct stream parameter if provided
+    const directStream = getStreamParam();
+    if (directStream) {
+      try {
+        const candidate = directStream.replace(/[/]+$/, '');
+        const testRes = await fetch(`${candidate}/status.json?t=${Date.now()}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`, { signal: AbortSignal.timeout(3000) });
+        if (testRes.ok || testRes.status === 401 || testRes.status === 403) {
+          activeStreamUrl = candidate;
+          $('cfgStreamUrl').textContent = activeStreamUrl;
+          $('charLoc').textContent = 'connected!';
+          $('liveDot').classList.remove('off');
+          tick();
+          return;
+        }
+      } catch (e) {}
     }
+
+    // Tier 2: Local loopback (instant on PC desktop browser)
+    try {
+      const localRes = await fetch(`http://127.0.0.1:8777/status.json?t=${Date.now()}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`, { signal: AbortSignal.timeout(1200) });
+      if (localRes.ok || localRes.status === 401 || localRes.status === 403) {
+        activeStreamUrl = 'http://127.0.0.1:8777';
+        $('cfgStreamUrl').textContent = activeStreamUrl;
+        $('charLoc').textContent = 'connected (local)';
+        $('liveDot').classList.remove('off');
+        tick();
+        return;
+      }
+    } catch (e) {}
+
+    // Tier 3: Multi-relay cloud discovery
+    const servers = ['https://ntfy.envs.net', 'https://ntfy.sh'];
+    const topic = `roz_${room.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+
+    for (const srv of servers) {
+      try {
+        const res = await fetch(`${srv}/${encodeURIComponent(topic)}/json?poll=1&since=all`, { signal: AbortSignal.timeout(3000) });
+        if (res.ok) {
+          const text = await res.text();
+          const lines = text.trim().split('\n');
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const item = JSON.parse(lines[i]);
+              if (item.message) {
+                const data = JSON.parse(item.message);
+                if (data.url) {
+                  const candidateUrl = data.url.replace(/[/]+$/, '');
+                  try {
+                    const candidatePin = pin || data.pin;
+                    const testRes = await fetch(`${candidateUrl}/status.json?t=${Date.now()}${candidatePin ? '&pin=' + encodeURIComponent(candidatePin) : ''}`, { signal: AbortSignal.timeout(3500) });
+                    if (testRes.ok || testRes.status === 401 || testRes.status === 403) {
+                      activeStreamUrl = candidateUrl;
+                      localStorage.setItem('roz_stream_url', candidateUrl);
+                      if (data.pin && !getPin()) localStorage.setItem('roz_pin', data.pin);
+                      $('cfgStreamUrl').textContent = activeStreamUrl;
+                      $('charLoc').textContent = 'connected!';
+                      $('liveDot').classList.remove('off');
+                      tick();
+                      return;
+                    }
+                  } catch (connErr) {}
+                }
+              }
+            } catch(e){}
+          }
+        }
+      } catch (srvErr) {}
+    }
+
     $('charLoc').innerHTML = '<span style="color:var(--bad);cursor:pointer;" onclick="resolveAndConnect()">🔴 PC Offline (retrying…)</span>';
     $('liveDot').classList.add('off');
     activeStreamUrl = '';
@@ -495,12 +544,12 @@ async function resolveAndConnect() {
   }
 }
 
-// Background auto-resolver every 5s when offline
+// Background auto-resolver every 4s when offline
 setInterval(() => {
   if (!activeStreamUrl && getRoom()) {
     resolveAndConnect();
   }
-}, 5000);
+}, 4000);
 
 // --- Navigation ---
 function showTab(name) {
