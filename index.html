@@ -149,7 +149,16 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
 .mob-name { font-size: 13px; font-weight: 700; color: var(--fg); text-decoration: none; }
 .mob-name:hover { color: var(--acc); text-decoration: underline; }
 .mob-hp { font-size: 11px; color: var(--dim); margin-top: 2px; }
-.boss-tag { background: rgba(255, 77, 77, 0.25); color: var(--bad); padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-left: 4px; border: 1px solid var(--bad); }
+.actor-filter-pills { display: flex; gap: 4px; }
+.pill-btn {
+  background: var(--bar); color: var(--dim); border: 1px solid #2a3142;
+  border-radius: 12px; padding: 2px 8px; font-size: 10px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.pill-btn.active { background: var(--acc); color: var(--bg); border-color: var(--acc); }
+.pill-btn:hover { color: var(--fg); }
+.player-tag { background: rgba(0, 212, 255, 0.2); color: var(--acc); padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-left: 4px; border: 1px solid var(--acc); }
+.npc-tag { background: rgba(46, 204, 113, 0.2); color: var(--good); padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-left: 4px; border: 1px solid var(--good); }
 .chat-box { max-height: 240px; overflow-y: auto; font-size: 12px; }
 .msg-row { padding: 4px 0; border-bottom: 1px solid #1b1f2b; }
 .msg-who { color: var(--acc); font-weight: 600; }
@@ -270,9 +279,17 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
       </div>
     </div>
     <div class="card" id="mobCard">
-      <div class="card-title">Nearby Monsters (<span id="mobCount" class="acc">0</span>)</div>
+      <div class="card-title">
+        <span>Nearby in Sight (<span id="mobCount" class="acc">0</span>)</span>
+        <div class="actor-filter-pills">
+          <button class="pill-btn active" id="pillAll" onclick="setActorFilter('all')">All</button>
+          <button class="pill-btn" id="pillMobs" onclick="setActorFilter('mob')">Mobs</button>
+          <button class="pill-btn" id="pillPlayers" onclick="setActorFilter('player')">Players</button>
+          <button class="pill-btn" id="pillNpcs" onclick="setActorFilter('npc')">NPCs</button>
+        </div>
+      </div>
       <div id="mobListContainer" class="mob-scroll-list">
-        <div style="color:var(--dim);text-align:center;padding:24px 10px;font-size:12px;">No monsters currently in sight<br><span style="font-size:11px;color:#50576a;">Walk near monsters to track on radar</span></div>
+        <div style="color:var(--dim);text-align:center;padding:24px 10px;font-size:12px;">No actors currently in sight<br><span style="font-size:11px;color:#50576a;">Walk near entities to track on radar</span></div>
       </div>
     </div>
   </div>
@@ -488,7 +505,9 @@ function showTab(name) {
   const tabs = ['overview', 'combat', 'map', 'loot', 'chat', 'settings'];
   const idx = tabs.indexOf(name);
   if (idx !== -1 && btns[idx]) btns[idx].classList.add('active');
-  if (name === 'map' && lastSnapshot) drawMap(lastSnapshot.location || {});
+  if (name === 'map' && lastSnapshot) {
+    drawMap(lastSnapshot.location || {}, lastSnapshot.actors || lastSnapshot.monsters || []);
+  }
 }
 
 // --- Synthesized Audio Alarms ---
@@ -537,12 +556,109 @@ function alarmLevelUp() {
   } catch(e){}
 }
 
+// --- Actor Filter & Render ---
+let currentActors = [];
+let actorFilter = 'all';
+
+function setActorFilter(f) {
+  actorFilter = f;
+  ['pillAll', 'pillMobs', 'pillPlayers', 'pillNpcs'].forEach(id => {
+    const el = $(id);
+    if (el) el.classList.remove('active');
+  });
+  if (f === 'all' && $('pillAll')) $('pillAll').classList.add('active');
+  if (f === 'mob' && $('pillMobs')) $('pillMobs').classList.add('active');
+  if (f === 'player' && $('pillPlayers')) $('pillPlayers').classList.add('active');
+  if (f === 'npc' && $('pillNpcs')) $('pillNpcs').classList.add('active');
+  renderActorList();
+}
+
+function renderActorList() {
+  const container = $('mobListContainer');
+  if (!container) return;
+
+  let list = currentActors || [];
+  if (actorFilter === 'mob') list = list.filter(a => !a.kind || a.kind === 'mob');
+  else if (actorFilter === 'player') list = list.filter(a => a.kind === 'player');
+  else if (actorFilter === 'npc') list = list.filter(a => a.kind === 'npc' || a.kind === 'portal');
+
+  $('mobCount').textContent = currentActors ? currentActors.length : 0;
+
+  if (list && list.length > 0) {
+    container.innerHTML = list.map(a => {
+      const isMob = !a.kind || a.kind === 'mob';
+      const isPlayer = a.kind === 'player';
+      const isPortal = a.kind === 'portal';
+      const isNpc = a.kind === 'npc';
+
+      if (isMob) {
+        return `
+          <div class="mob-card">
+            <div class="mob-left">
+              <img src="https://midgardhub.com/images/monsters/${a.id}.gif" onerror="this.onerror=null;this.src='https://midgardhub.com/images/monsters/${a.id}.png';" class="mob-icon" alt="">
+              <div>
+                <div>
+                  <a href="https://midgardhub.com/database/monsters/${a.id}" target="_blank" class="mob-name">${a.name || ('Mob #' + a.id)}</a>
+                  ${a.boss ? '<span class="boss-tag">BOSS</span>' : ''}
+                </div>
+                <div class="mob-hp">Pos: (${a.x}, ${a.y})${a.hp && a.hp > 0 ? ` · HP: ${a.hp.toLocaleString()}` : ''}</div>
+              </div>
+            </div>
+            <a href="https://midgardhub.com/database/monsters/${a.id}" target="_blank" style="color:var(--dim);font-size:11px;text-decoration:none;padding:4px 6px;border:1px solid #2a3142;border-radius:4px;">↗ DB</a>
+          </div>
+        `;
+      } else if (isPlayer) {
+        return `
+          <div class="mob-card" style="border-left: 3px solid var(--acc);">
+            <div class="mob-left">
+              <div style="font-size: 20px; width: 36px; text-align: center;">🧙</div>
+              <div>
+                <div>
+                  <span class="mob-name" style="color:var(--acc);">${a.name}</span>
+                  <span class="player-tag">${a.job || 'Player'}</span>
+                </div>
+                <div class="mob-hp">Pos: (${a.x}, ${a.y})${a.hp && a.hp > 0 ? ` · HP: ${a.hp.toLocaleString()}` : ''}</div>
+              </div>
+            </div>
+            <span style="color:var(--dim);font-size:11px;">Player</span>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="mob-card" style="border-left: 3px solid var(--good);">
+            <div class="mob-left">
+              <div style="font-size: 20px; width: 36px; text-align: center;">${isPortal ? '🌀' : '🏛️'}</div>
+              <div>
+                <div>
+                  <span class="mob-name" style="color:var(--good);">${a.name}</span>
+                  <span class="npc-tag">${isPortal ? 'WARP' : 'NPC'}</span>
+                </div>
+                <div class="mob-hp">Pos: (${a.x}, ${a.y})</div>
+              </div>
+            </div>
+            <span style="color:var(--dim);font-size:11px;">${isPortal ? 'Portal' : 'NPC'}</span>
+          </div>
+        `;
+      }
+    }).join('');
+  } else {
+    container.innerHTML = `
+      <div style="color:var(--dim);text-align:center;padding:24px 10px;font-size:12px;">
+        No ${actorFilter === 'all' ? 'entities' : actorFilter + 's'} currently in sight<br>
+        <span style="font-size:11px;color:#50576a;">Walk near entities to track on radar</span>
+      </div>`;
+  }
+}
+
 // --- Minimap Canvas ---
-function drawMap(loc, monsters = []) {
+function drawMap(loc, actors = []) {
   const canvas = $('mapCanvas');
+  if (!canvas) return;
   const g = canvas.getContext('2d');
   const S = canvas.width;
   g.clearRect(0, 0, S, S);
+
+  currentActors = (actors && actors.length > 0) ? actors : (lastSnapshot && (lastSnapshot.actors || lastSnapshot.monsters)) || [];
 
   const mapName = loc.map || '';
   const x = loc.x || 0, y = loc.y || 0;
@@ -551,6 +667,7 @@ function drawMap(loc, monsters = []) {
   if (!mapName) {
     g.fillStyle = '#1b1f2b'; g.font = '12px Segoe UI'; g.textAlign = 'center';
     g.fillText('Waiting for map data…', S / 2, S / 2);
+    renderActorList();
     return;
   }
 
@@ -561,7 +678,7 @@ function drawMap(loc, monsters = []) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = imgUrl;
-    img.onload = () => { mapCache[mapName] = img; drawMap(loc, monsters); };
+    img.onload = () => { mapCache[mapName] = img; drawMap(loc, currentActors); };
   } else {
     g.drawImage(mapCache[mapName], 0, 0, S, S);
   }
@@ -584,19 +701,27 @@ function drawMap(loc, monsters = []) {
     g.stroke();
   }
 
-  // Draw Nearby Monsters on Radar
-  monsters.forEach(m => {
-    const mx = (m.x + offX) / maxC * S;
-    const my = (maxC - (m.y + offY)) / maxC * S;
-    if (m.boss) {
+  // Draw Nearby Actors on Radar
+  currentActors.forEach(a => {
+    const ax = (a.x + offX) / maxC * S;
+    const ay = (maxC - (a.y + offY)) / maxC * S;
+    const kind = a.kind || 'mob';
+
+    if (kind === 'player') {
+      g.fillStyle = '#00d4ff'; g.strokeStyle = '#ffffff'; g.lineWidth = 1;
+      g.beginPath(); g.arc(ax, ay, 4, 0, Math.PI * 2); g.fill(); g.stroke();
+    } else if (kind === 'npc' || kind === 'portal') {
+      g.fillStyle = '#2ecc71'; g.strokeStyle = '#10131a'; g.lineWidth = 1;
+      g.beginPath(); g.arc(ax, ay, 3.5, 0, Math.PI * 2); g.fill(); g.stroke();
+    } else if (a.boss) {
       g.fillStyle = '#ffd479'; g.strokeStyle = '#ff4d4d'; g.lineWidth = 2;
-      g.beginPath(); g.arc(mx, my, 6, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.beginPath(); g.arc(ax, ay, 6, 0, Math.PI * 2); g.fill(); g.stroke();
     } else {
       // High-visibility crimson monster blip
       g.fillStyle = 'rgba(255, 77, 77, 0.4)';
-      g.beginPath(); g.arc(mx, my, 6, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(ax, ay, 6, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#ff3333'; g.strokeStyle = '#ffffff'; g.lineWidth = 1;
-      g.beginPath(); g.arc(mx, my, 3.5, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.beginPath(); g.arc(ax, ay, 3.5, 0, Math.PI * 2); g.fill(); g.stroke();
     }
   });
 
@@ -607,31 +732,7 @@ function drawMap(loc, monsters = []) {
   g.beginPath(); g.arc(px, py, 7, 0, Math.PI * 2); g.stroke();
   g.beginPath(); g.arc(px, py, 3.5, 0, Math.PI * 2); g.fill();
 
-  // Render Monster List with MidgardHub images
-  $('mobCount').textContent = monsters ? monsters.length : 0;
-  if (monsters && monsters.length > 0) {
-    $('mobListContainer').innerHTML = monsters.map(m => `
-      <div class="mob-card">
-        <div class="mob-left">
-          <img src="https://midgardhub.com/images/monsters/${m.id}.gif" onerror="this.onerror=null;this.src='https://midgardhub.com/images/monsters/${m.id}.png';" class="mob-icon" alt="">
-          <div>
-            <div>
-              <a href="https://midgardhub.com/database/monsters/${m.id}" target="_blank" class="mob-name">${m.name || ('Mob #' + m.id)}</a>
-              ${m.boss ? '<span class="boss-tag">BOSS</span>' : ''}
-            </div>
-            <div class="mob-hp">Pos: (${m.x}, ${m.y})${m.hp && m.hp > 0 ? ` · HP: ${m.hp.toLocaleString()}` : ''}</div>
-          </div>
-        </div>
-        <a href="https://midgardhub.com/database/monsters/${m.id}" target="_blank" style="color:var(--dim);font-size:11px;text-decoration:none;padding:4px 6px;border:1px solid #2a3142;border-radius:4px;">↗ DB</a>
-      </div>
-    `).join('');
-  } else {
-    $('mobListContainer').innerHTML = `
-      <div style="color:var(--dim);text-align:center;padding:24px 10px;font-size:12px;">
-        No monsters currently in sight<br>
-        <span style="font-size:11px;color:#50576a;">Walk near monsters to track on radar</span>
-      </div>`;
-  }
+  renderActorList();
 }
 
 function renderInv() {
@@ -755,8 +856,8 @@ async function tick() {
     $('invCount').textContent = currentInv.length;
     renderInv();
 
-    // Map drawing with live monsters
-    drawMap(loc, d.monsters || []);
+    // Map drawing with live actors and monsters
+    drawMap(loc, d.actors || d.monsters || []);
 
     // Chat
     const msgs = d.messages || [];
@@ -767,8 +868,6 @@ async function tick() {
         return `<div class="msg-row">${bc}${who}${m.text || ''}</div>`;
       }).join('');
     }
-
-    if (activeTab === 'map') drawMap(loc);
 
   } catch(err) {
     $('liveDot').classList.add('off');
