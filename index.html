@@ -838,17 +838,15 @@ async function tick() {
     $('hdrBackend').textContent = (d.capture || {}).backend || 'LIVE';
 
     const c = d.character || {}, e = d.exp || {}, v = d.vitals || {}, k = d.combat || {}, z = d.zeny || {}, l = d.loot || {};
-    const jobTitle = c.job ? ` - ${c.job}` : '';
-    $('charName').textContent = c.name ? `${c.name}${jobTitle}` : 'ROZ Live Monitor';
+    const charName = c.name || 'Yukki';
+    const jobName = c.job || 'Novice';
+    $('charName').textContent = `${charName} - ${jobName}`;
 
     const iconEl = $('charJobIcon');
     if (iconEl) {
-      if (c.job_id != null) {
-        iconEl.src = `jobicons/icon_job_${c.job_id}.png`;
-        iconEl.style.display = 'block';
-      } else {
-        iconEl.style.display = 'none';
-      }
+      const jid = c.job_id != null ? c.job_id : 0;
+      iconEl.src = `jobicons/icon_job_${jid}.png`;
+      iconEl.style.display = 'block';
     }
     const loc = d.location || {};
     $('charLoc').textContent = loc.map ? `${loc.map} (${loc.x || 0}, ${loc.y || 0})` : 'in-game';
