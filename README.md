@@ -57,7 +57,7 @@ All release binaries are scanned against 70+ antivirus engines on VirusTotal:
 
 | File | Size | SHA-256 Checksum | VirusTotal Report |
 |:---|:---|:---|:---:|
-| **`ROZ_Overlay.exe`** | 12.2 MB | `6d9993a5e1463981bf8b40e49cad27d4f43f717b08c7599f196b1349f0fee541` | [🔍 View VirusTotal Scan](https://www.virustotal.com/gui/file/6d9993a5e1463981bf8b40e49cad27d4f43f717b08c7599f196b1349f0fee541) |
+| **`ROZ_Overlay.exe`** | 12.2 MB | `7c70781d703295ab5e8c0dda770f53f77b9b8eed36f4424009b86771473e4401` | [🔍 View VirusTotal Scan](https://www.virustotal.com/gui/file/7c70781d703295ab5e8c0dda770f53f77b9b8eed36f4424009b86771473e4401) |
 | **`ro_data.bin`** | 15.1 MB | `cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d` | [🔍 View VirusTotal Scan](https://www.virustotal.com/gui/file/cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d) |
 
 ### 🔒 Zero-Injection Architecture
