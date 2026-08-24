@@ -929,15 +929,15 @@ async function tick() {
     $('charLoc').textContent = loc.map ? `${loc.map} (${loc.x || 0}, ${loc.y || 0})` : 'in-game';
 
     // Vitals
-    const hp = v.hp ?? 0, maxhp = v.maxhp ?? 1, sp = v.sp ?? 0, maxsp = v.maxsp ?? 1;
-    const wt = v.weight ?? 0, maxwt = v.maxweight ?? 1;
-    const hpPct = maxhp > 0 ? (hp / maxhp * 100) : 0;
-    const spPct = maxsp > 0 ? (sp / maxsp * 100) : 0;
-    const wtPct = maxwt > 0 ? (wt / maxwt * 100) : 0;
+    const hp = v.hp, maxhp = v.maxhp, sp = v.sp, maxsp = v.maxsp;
+    const wt = v.weight, maxwt = v.maxweight;
+    const hpPct = (hp != null && maxhp != null && maxhp > 0) ? (hp / maxhp * 100) : 0;
+    const spPct = (sp != null && maxsp != null && maxsp > 0) ? (sp / maxsp * 100) : 0;
+    const wtPct = (wt != null && maxwt != null && maxwt > 0) ? (wt / maxwt * 100) : 0;
 
-    $('hpText').textContent = `${hp.toLocaleString()} / ${maxhp.toLocaleString()}`;
-    $('spText').textContent = `${sp.toLocaleString()} / ${maxsp.toLocaleString()}`;
-    $('wtText').textContent = `${wt.toLocaleString()} / ${maxwt.toLocaleString()} (${wtPct.toFixed(0)}%)`;
+    $('hpText').textContent = `${hp != null ? hp.toLocaleString() : '-'} / ${maxhp != null ? maxhp.toLocaleString() : '-'}`;
+    $('spText').textContent = `${sp != null ? sp.toLocaleString() : '-'} / ${maxsp != null ? maxsp.toLocaleString() : '-'}`;
+    $('wtText').textContent = `${wt != null ? wt.toLocaleString() : '-'} / ${maxwt != null ? maxwt.toLocaleString() : '-'}${wt != null && maxwt != null ? ` (${wtPct.toFixed(0)}%)` : ''}`;
     $('hpBar').style.width = Math.min(100, Math.max(0, hpPct)) + '%';
     $('spBar').style.width = Math.min(100, Math.max(0, spPct)) + '%';
     $('wtBar').style.width = Math.min(100, Math.max(0, wtPct)) + '%';
