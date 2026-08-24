@@ -16,13 +16,13 @@
 <div align="center">
   <table>
     <tr>
-      <td align="center" width="50%">
-        <b>Mobile Web Portal (PWA)</b><br>
-        <img src="screenshots/web_monitor_mobile.png" width="240" alt="Mobile Web Portal" />
+      <td align="center" width="62%" valign="top">
+        <b>Live Web Radar Dashboard</b><br>
+        <img src="screenshots/web_monitor_portal.png" width="520" alt="Live Web Radar Dashboard" />
       </td>
-      <td align="center" width="50%">
+      <td align="center" width="38%" valign="top">
         <b>Desktop Overlay Companion</b><br>
-        <img src="screenshots/overlay_desktop.png" width="340" alt="Desktop Overlay" />
+        <img src="screenshots/overlay_desktop.png" width="300" alt="Desktop Overlay Companion" />
       </td>
     </tr>
   </table>
