@@ -51,17 +51,27 @@
 
 ---
 
-## 🔒 Security & Privacy
+## 🛡️ Security, Antivirus & Integrity Verification
 
-1. **Passive Telemetry**: The desktop overlay operates strictly outside the game process without reading memory or injecting code.
-2. **End-to-End Encryption**: Traffic between the desktop overlay and your browser is encrypted via secure WebSockets using a unique **16-character Room Code** and a **6-digit cryptographic PIN**.
-3. **No Packet Leaks**: Raw packets are never transmitted over the internet or saved to disk; only sanitized numeric metrics and entity coordinates are synced.
+All release binaries are scanned against 70+ antivirus engines on VirusTotal:
+
+| File | Size | SHA-256 Checksum | VirusTotal Report |
+|:---|:---|:---|:---:|
+| **`ROZ_Overlay.exe`** | 12.2 MB | `7d555c0753b0b8469bca4eb97afa8f450741212260ac6e526c063c3d36c6d784` | [🔍 View VirusTotal Scan](https://www.virustotal.com/gui/file/7d555c0753b0b8469bca4eb97afa8f450741212260ac6e526c063c3d36c6d784) |
+| **`ro_data.bin`** | 15.1 MB | `cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d` | [🔍 View VirusTotal Scan](https://www.virustotal.com/gui/file/cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d) |
+
+### 🔒 Zero-Injection Architecture
+* ❌ **No DLL Injection**
+* ❌ **No Memory Reading / Writing**
+* ❌ **No Client File Modification**
+* ✅ **100% In-Memory Passive Telemetry**
+* 🔐 **End-to-End WebSocket Encryption** via Room Code & PIN
 
 ---
 
 ## 🚀 Quick Start & Pairing
 
-1. **Launch Desktop Overlay**:
+1. **Launch Desktop Companion**:
    Download and run **`ROZ_Overlay.exe`** on your PC from [GitHub Releases](https://github.com/Samuel23/roz_monitor/releases).
 2. **Scan QR Code**:
    Go to the **Setup** tab on the overlay and scan the pairing QR code with your mobile phone camera.
