@@ -1,8 +1,32 @@
-# 📱 ROZ Monitor — Live Remote Companion & Web Dashboard
+<div align="center">
+  <img src="app_logo.png" width="128" height="128" alt="ROZ Monitor Logo" />
+  <h1>📱 ROZ Monitor — Live Remote Companion & Web Dashboard</h1>
+  <p><b>Real-time mobile telemetry & radar companion for Ragnarok Zero & Renewal</b></p>
+  <p>
+    <a href="https://samuel23.github.io/roz_monitor/"><img src="https://img.shields.io/badge/Live%20PWA-samuel23.github.io%2Froz__monitor-brightgreen" alt="Live Web App" /></a>
+    <a href="https://github.com/Samuel23/roz_monitor/releases"><img src="https://img.shields.io/github/v/release/Samuel23/roz_monitor?color=blue&label=Desktop%20Release" alt="Download" /></a>
+    <img src="https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20Desktop-purple" alt="Platform" />
+  </p>
+</div>
 
-A modern, responsive Progressive Web App (PWA) and remote dashboard for **Ragnarok Zero & Renewal**. It pairs securely with the desktop companion ([**ROZ Overlay**](https://github.com/Samuel23/roz_monitor/releases)) to stream live character telemetry, high-DPI radar minimaps, and real-time audio alarms to your mobile phone, tablet, or browser anywhere in the world.
+---
 
-🌐 **Live Web App**: [https://samuel23.github.io/roz_monitor/](https://samuel23.github.io/roz_monitor/)
+## 📸 Screenshots & Visual Preview
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="50%">
+        <b>Mobile Web Portal (PWA)</b><br>
+        <img src="screenshots/web_monitor_mobile.png" width="240" alt="Mobile Web Portal" />
+      </td>
+      <td align="center" width="50%">
+        <b>Desktop Overlay Companion</b><br>
+        <img src="screenshots/overlay_desktop.png" width="340" alt="Desktop Overlay" />
+      </td>
+    </tr>
+  </table>
+</div>
 
 ---
 
