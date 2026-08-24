@@ -2,10 +2,10 @@
   "version": "1.3.0",
   "data_version": "2026.08.24",
   "release_date": "2026-08-24",
-  "changelog": "Add custom application icons, in-game screenshots, and UI previews",
+  "changelog": "Sanitized telemetry labels and updated security verification",
   "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.3.0/ROZ_Overlay.exe",
-  "exe_size": 12833271,
-  "exe_sha256": "7d555c0753b0b8469bca4eb97afa8f450741212260ac6e526c063c3d36c6d784",
+  "exe_size": 12833892,
+  "exe_sha256": "77c155c04422aa9682d6cac9bc12c0a1e0429de6d0044672a7111a8e083052d4",
   "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.3.0/ro_data.bin",
   "data_size": 15789740,
   "data_sha256": "cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d"
