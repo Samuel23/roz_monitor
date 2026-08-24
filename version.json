@@ -2,10 +2,10 @@
   "version": "1.3.0",
   "data_version": "2026.08.24",
   "release_date": "2026-08-24",
-  "changelog": "Clean PE metadata build without untrusted root signature",
+  "changelog": "v1.3.0: Zero-injection companion telemetry, in-app differential auto-updater, and Authenticode signed standalone executable",
   "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.3.0/ROZ_Overlay.exe",
-  "exe_size": 12834520,
-  "exe_sha256": "7c70781d703295ab5e8c0dda770f53f77b9b8eed36f4424009b86771473e4401",
+  "exe_size": 12836912,
+  "exe_sha256": "5d909942d9cfaeea8241009c35129eb0e4849ec39423cd575f0db2ee51f2fcaf",
   "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.3.0/ro_data.bin",
   "data_size": 15789740,
   "data_sha256": "cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d"
