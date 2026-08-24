@@ -2,10 +2,10 @@
   "version": "1.3.0",
   "data_version": "2026.08.24",
   "release_date": "2026-08-24",
-  "changelog": "Add Windows PE metadata, disabled UPX, and Authenticode signing",
+  "changelog": "Clean PE metadata build without untrusted root signature",
   "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.3.0/ROZ_Overlay.exe",
-  "exe_size": 12836456,
-  "exe_sha256": "6d9993a5e1463981bf8b40e49cad27d4f43f717b08c7599f196b1349f0fee541",
+  "exe_size": 12834520,
+  "exe_sha256": "7c70781d703295ab5e8c0dda770f53f77b9b8eed36f4424009b86771473e4401",
   "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.3.0/ro_data.bin",
   "data_size": 15789740,
   "data_sha256": "cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d"
