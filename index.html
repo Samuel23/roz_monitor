@@ -330,7 +330,14 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
     <table class="tbl"><tbody id="lootTable"></tbody></table>
   </div>
   <div class="card">
-    <div class="card-title">Inventory (<span id="invCount">0</span>)</div>
+    <div class="card-title">
+      <span><span id="invTitle">Items</span> (<span id="invCount">0</span>)</span>
+      <div class="actor-filter-pills" id="invCategoryPills">
+        <button class="pill-btn active" id="pillInv" onclick="setInvCategory('inventory')">Inventory</button>
+        <button class="pill-btn" id="pillCart" onclick="setInvCategory('cart')">Cart</button>
+        <button class="pill-btn" id="pillStorage" onclick="setInvCategory('storage')">Storage</button>
+      </div>
+    </div>
     <input type="text" id="invSearch" class="search-input" placeholder="Filter items…" oninput="renderInv()">
     <table class="tbl"><tbody id="invTable"></tbody></table>
   </div>
@@ -820,10 +827,29 @@ function drawMap(loc, actors = []) {
   renderActorList();
 }
 
+let invCategory = 'inventory';
+
+function setInvCategory(cat) {
+  invCategory = cat;
+  $('pillInv').classList.toggle('active', cat === 'inventory');
+  $('pillCart').classList.toggle('active', cat === 'cart');
+  $('pillStorage').classList.toggle('active', cat === 'storage');
+  $('invTitle').textContent = cat === 'cart' ? 'Cart Items' : (cat === 'storage' ? 'Storage Items' : 'Inventory');
+  updateInvSource();
+}
+
+function updateInvSource() {
+  if (!lastSnapshot) return;
+  const raw = (invCategory === 'cart' ? lastSnapshot.cart : invCategory === 'storage' ? lastSnapshot.storage : lastSnapshot.inventory) || [];
+  currentInv = raw.slice().sort((a,b) => b.count - a.count);
+  $('invCount').textContent = currentInv.length;
+  renderInv();
+}
+
 function renderInv() {
   const filter = ($('invSearch').value || '').toLowerCase();
   const filtered = currentInv.filter(i => (i.name || `item#${i.itid}`).toLowerCase().includes(filter));
-  $('invTable').innerHTML = filtered.slice(0, 40).map(i => `
+  $('invTable').innerHTML = filtered.slice(0, 50).map(i => `
     <tr>
       <td>
         <div class="item-row">
@@ -1000,9 +1026,13 @@ async function tick() {
       $('lootTable').innerHTML = '<tr><td style="color:var(--dim)">Nothing dropped yet</td><td></td></tr>';
     }
 
-    currentInv = (d.inventory || []).slice().sort((a,b) => b.count - a.count);
-    $('invCount').textContent = currentInv.length;
-    renderInv();
+    const hasCart = (d.cart && d.cart.length > 0);
+    const cartPill = $('pillCart');
+    if (cartPill) cartPill.style.display = hasCart ? 'inline-block' : 'none';
+    const hasStorage = (d.storage && d.storage.length > 0);
+    const storagePill = $('pillStorage');
+    if (storagePill) storagePill.style.display = hasStorage ? 'inline-block' : 'none';
+    updateInvSource();
 
     // Map drawing with live actors and monsters
     drawMap(loc, d.actors || d.monsters || []);
