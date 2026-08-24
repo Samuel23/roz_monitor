@@ -92,6 +92,48 @@ All release binaries are scanned against 70+ antivirus engines on VirusTotal:
 
 ---
 
+## 🛠️ Frequently Asked Questions & Troubleshooting
+
+### 🔐 1. Privacy & Account Credentials Guarantee
+> **"How can I be 100% sure my login details, passwords, or PIN codes are never captured?"**
+
+* **Architecture Guarantee**: The companion tool completely ignores login and character authentication authentication servers. It passively listens only to active in-game world events once you are playing inside the game.
+* **Zero-Risk Verification Method**: If you want absolute peace of mind, **launch `ROZ_Overlay.exe` only AFTER you have already logged in and entered the game world.**
+* **Local In-Memory Privacy**: All calculations (EXP/h, loot counts, radar tracking) are computed entirely in volatile RAM on your local PC. Nothing is ever transmitted to external servers.
+
+---
+
+### 🔄 2. Incomplete or Blank Character Details
+> **"My character name, stats, or inventory aren't displaying after opening the overlay."**
+
+* **Reason**: The game server transmits full character inventory, stat blocks, and equipment lists only upon entering a world map. If you launch the overlay while already standing in the game, some initial packets may have been missed.
+* **Quick Fix**: Simply press `Esc` $\rightarrow$ **Character Select** and re-enter your character, or walk through any map warp portal / teleport. This prompts the server to re-broadcast fresh synchronization packets.
+
+---
+
+### 👥 3. Multi-Client / Multi-Boxing Focus
+> **"I am playing on multiple accounts. How do I switch which character the overlay is tracking?"**
+
+* **Instant Switching**: Look at the fleet selector bar at the top of the overlay window or mobile web portal. Click any character name to immediately switch live telemetry, inventory, and stats to that client window.
+
+---
+
+### 📡 4. Telemetry Status Shows "Searching / Connecting"
+> **"The overlay is open, but telemetry events are not incrementing."**
+
+* **Quick Fix**: Walk a few steps in-game or cast any skill. The capture engine passively detects the active socket as soon as the game client exchanges traffic with the server.
+
+---
+
+### 📱 5. Mobile Web Portal Pairing
+> **"How do I connect my mobile phone or tablet to the live monitor?"**
+
+* **1-Scan Pairing**: Open the **Setup** tab on your desktop overlay and scan the pairing QR code with your phone's camera.
+* **Manual Room Code & PIN**: Alternatively, open [https://samuel23.github.io/roz_monitor/](https://samuel23.github.io/roz_monitor/) on any device, enter the **Room Code** and **4-digit PIN** displayed on your desktop Setup tab, and tap **Connect**.
+* **Reconnecting**: If you close your browser or change tabs, simply re-enter your Room Code and PIN to immediately resume your live session.
+
+---
+
 ## ⚖️ Legal & Copyright Notice
 
 ROZ Monitor and ROZ Overlay are independent open-source companion tools.  
