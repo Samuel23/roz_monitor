@@ -206,6 +206,13 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
 .fleet-item.active {
   border-color: var(--acc); background: rgba(27, 31, 43, 0.8);
 }
+.legal-footer {
+  text-align: center;
+  padding: 16px 8px 14px 8px;
+  font-size: 10px;
+  color: var(--dim);
+  line-height: 1.5;
+}
 </style>
 </head>
 <body>
@@ -239,11 +246,11 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
       <div class="v-head"><span>HP</span><span id="hpText">- / -</span></div>
       <div class="progress-bg"><div id="hpBar" class="progress-fill" style="background:var(--hp); width:0%;"></div></div>
     </div>
-    <div class="v-row">
+    <div class="v-row" style="margin-top:6px;">
       <div class="v-head"><span>SP</span><span id="spText">- / -</span></div>
       <div class="progress-bg"><div id="spBar" class="progress-fill" style="background:var(--sp); width:0%;"></div></div>
     </div>
-    <div class="v-row">
+    <div class="v-row" style="margin-top:6px;">
       <div class="v-head"><span>Weight</span><span id="wtText">- / -</span></div>
       <div class="progress-bg"><div id="wtBar" class="progress-fill" style="background:var(--wt); width:0%;"></div></div>
     </div>
@@ -276,6 +283,7 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
     </div>
     <div style="font-size: 11px; color: var(--dim); margin-top: 8px; text-align: center;" id="sessionTime">Active 0s</div>
   </div>
+  <div class="legal-footer">All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.</div>
 </div>
 
 <!-- TAB: COMBAT -->
@@ -295,6 +303,7 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
     <div class="card-title">Active Buffs (<span id="buffCount">0</span>)</div>
     <div id="buffsContainer" style="min-height: 40px; display: flex; flex-wrap: wrap;"></div>
   </div>
+  <div class="legal-footer">All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.</div>
 </div>
 
 <!-- TAB: MINIMAP -->
@@ -321,6 +330,7 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
       </div>
     </div>
   </div>
+  <div class="legal-footer">All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.</div>
 </div>
 
 <!-- TAB: LOOT -->
@@ -341,6 +351,7 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
     <input type="text" id="invSearch" class="search-input" placeholder="Filter items…" oninput="renderInv()">
     <table class="tbl"><tbody id="invTable"></tbody></table>
   </div>
+  <div class="legal-footer">All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.</div>
 </div>
 
 <!-- TAB: CHAT -->
@@ -349,6 +360,7 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
     <div class="card-title">In-Game Chat / Whispers</div>
     <div class="chat-box" id="chatBox"><div style="color:var(--dim);text-align:center;padding:20px;">No messages received</div></div>
   </div>
+  <div class="legal-footer">All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.</div>
 </div>
 
 <!-- TAB: SETTINGS -->
@@ -376,6 +388,19 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
     <button class="btn-sec" onclick="alarmLowHp()">Test Low HP Siren</button>
     <button class="btn-sec" onclick="alarmLevelUp()">Test Level Up Sound</button>
   </div>
+
+  <div class="card">
+    <div class="card-title">About ROZ Monitor & Overlay</div>
+    <div style="font-size:12px;color:var(--fg);line-height:1.6;margin-bottom:8px;">
+      <b>• PC Overlay:</b> Passively analyzes Ragnarok Online network packets to calculate real-time Base/Job EXP rates, combat DPS, session loot drops, Push Cart contents, and radar minimaps without reading or injecting into the game client process.<br><br>
+      <b>• Mobile Web Portal:</b> Securely streams live telemetry, entity tracking radar, and real-time audio alarms to your mobile phone or browser with end-to-end PIN encryption.
+    </div>
+  </div>
+
+  <footer style="text-align:center;padding:12px 8px 24px 8px;font-size:10px;color:var(--dim);line-height:1.5;">
+    ROZ Monitor is an independent open-source telemetry companion.<br>
+    All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.
+  </footer>
 </div>
 
 <!-- BOTTOM NAVIGATION -->
