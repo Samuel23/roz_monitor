@@ -2,10 +2,10 @@
   "version": "1.4.0",
   "data_version": "2026.08.25",
   "release_date": "2026-08-25",
-  "changelog": "Modular endpoints, daily farming history, chat fixes, and auto-updater fix",
+  "changelog": "Removed server IP exposure on Setup screen, modular telemetry, and updater fixes",
   "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.4.0/ROZ_Overlay.exe",
-  "exe_size": 13261296,
-  "exe_sha256": "f4d0fcf6cb4e0c53a8f04e5f461078d4540ec049881e35bd083f9ba706b43cea",
+  "exe_size": 13259528,
+  "exe_sha256": "8b54b2dd25b653edf1e3956b5a56f42fbb3990e5d2d864baca8227cf7a0787b3",
   "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.4.0/ro_data.bin",
   "data_size": 15789740,
   "data_sha256": "486338a0f2c8e8cf773677be4201cf625f18859ee2ec46ec400cbff94c76acb0"
