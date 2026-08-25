@@ -46,6 +46,8 @@
 * **🚨 Mobile Audio Alarms & Haptics**:
   * Distinct sound chimes for Low HP warnings, Level Up fanfares, and incoming whispers.
   * Device vibration and screen wake-lock (prevents phone from sleeping while farming).
+* **🔔 Discord & Telegram Push Alerts**:
+  * Direct webhook & bot push notifications to your phone for Low HP (<25%), Deaths, Whispers, and Rare Drops. 👉 **[View Setup Guide](DISCORD_TELEGRAM_ALERTS.md)**
 * **🎮 Multi-Client Support**:
   * Seamlessly switch between multiple active game clients with the multi-box fleet bar.
 
