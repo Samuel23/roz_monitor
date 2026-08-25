@@ -51,14 +51,14 @@
 
 ---
 
-## 🛡️ Security, Antivirus & Integrity Verification
+## 🛡️ Security & Integrity Verification
 
-All release binaries are scanned against 70+ antivirus engines on VirusTotal:
+Official release binary integrity and SHA-256 verification:
 
-| File | Size | SHA-256 Checksum | VirusTotal Report |
-|:---|:---|:---|:---:|
-| **`ROZ_Overlay.exe`** | 12.2 MB | `5d909942d9cfaeea8241009c35129eb0e4849ec39423cd575f0db2ee51f2fcaf` | [🔍 View VirusTotal Scan](https://www.virustotal.com/gui/file/5d909942d9cfaeea8241009c35129eb0e4849ec39423cd575f0db2ee51f2fcaf) |
-| **`ro_data.bin`** | 15.1 MB | `cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d` | [🔍 View VirusTotal Scan](https://www.virustotal.com/gui/file/cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d) |
+| File | Size | SHA-256 Checksum |
+|:---|:---|:---|
+| **`ROZ_Overlay.exe`** | 12.6 MB | `779e8fdbf0bfb3c021ddc0cdd914b8339f971221bd90b322a9f354001398ab7c` |
+| **`ro_data.bin`** | 15.1 MB | `cbeb00b805968435071aff36847b6640d4f941a61f36ce640ab35beda04e4e2d` |
 
 ### 🔒 Zero-Injection Architecture
 * ❌ **No DLL Injection**
