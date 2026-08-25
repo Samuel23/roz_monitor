@@ -987,9 +987,14 @@ async function tick() {
     const msgs = d.messages || [];
     if (msgs.length) {
       $('chatBox').innerHTML = msgs.slice(-25).reverse().map(m => {
-        const who = m.from ? `<span class="msg-who">${m.from}: </span>` : '';
-        const bc = m.kind === 'broadcast' ? '<span class="msg-bc">[Broadcast] </span>' : '';
-        return `<div class="msg-row">${bc}${who}${m.text || ''}</div>`;
+        let prefix = '';
+        if (m.channel === 'broadcast' || m.kind === 'broadcast') {
+          const fromName = (m.from && m.from !== 'System') ? `${m.from} (Shout)` : 'Broadcast';
+          prefix = `<span class="msg-bc">[${fromName}] </span>`;
+        } else if (m.from) {
+          prefix = `<span class="msg-who">${m.from}: </span>`;
+        }
+        return `<div class="msg-row">${prefix}${m.text || ''}</div>`;
       }).join('');
     }
 
