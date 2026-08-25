@@ -2,218 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://midgardhub.com https://ntfy.envs.net https://ntfy.sh data: blob:; connect-src *; img-src * data: blob:;">
 <title>ROZ Live Monitor</title>
 <meta name="theme-color" content="#0f1117">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
-<style>
-:root {
-  --bg: #0f1117;
-  --bg-card: #161923;
-  --bar: #1b1f2b;
-  --fg: #d7dce8;
-  --dim: #6f7688;
-  --acc: #7fd1ff;
-  --good: #8fe08f;
-  --warn: #ffcc66;
-  --bad: #ff7a7a;
-  --gold: #ffd479;
-  --hp: #ff5555;
-  --sp: #4da6ff;
-  --wt: #a074c4;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 13px;
-  line-height: 1.4;
-  padding-bottom: 72px;
-}
-header {
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(15, 17, 23, 0.95);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid #222634;
-  padding: 10px 14px;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.hdr-title { font-weight: 700; font-size: 15px; color: var(--fg); }
-.hdr-sub { font-size: 11px; color: var(--dim); }
-.live-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--good); display: inline-block; margin-right: 4px;
-  box-shadow: 0 0 8px var(--good);
-}
-.live-dot.off { background: var(--bad); box-shadow: none; }
-.card {
-  background: var(--bg-card);
-  border: 1px solid #222634;
-  border-radius: 8px;
-  padding: 12px;
-  margin: 10px 12px;
-}
-.card-title {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.5px; color: var(--dim); margin-bottom: 8px;
-  display: flex; justify-content: space-between;
-}
-.v-row { margin-bottom: 8px; }
-.v-head { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px; }
-.progress-bg {
-  background: var(--bar); height: 8px; border-radius: 4px; overflow: hidden;
-}
-.progress-fill { height: 100%; transition: width 0.3s ease; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-.stat-box {
-  background: var(--bar); padding: 8px 10px; border-radius: 6px;
-}
-.stat-lbl { font-size: 10px; color: var(--dim); }
-.stat-val { font-size: 13px; font-weight: 700; color: var(--fg); }
-.gold { color: var(--gold); }
-.acc { color: var(--acc); }
-.good { color: var(--good); }
-.warn { color: var(--warn); }
-.bad { color: var(--bad); }
-
-nav.bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0; height: 56px;
-  background: rgba(15, 17, 23, 0.98);
-  border-top: 1px solid #222634;
-  display: flex; justify-content: space-around; align-items: center;
-  z-index: 100;
-}
-.nav-item {
-  display: flex; flex-direction: column; align-items: center;
-  color: var(--dim); font-size: 10px; font-weight: 600;
-  text-decoration: none; border: none; background: none; cursor: pointer;
-  padding: 6px; flex: 1;
-}
-.nav-item.active { color: var(--acc); }
-.nav-icon { font-size: 16px; margin-bottom: 2px; }
-.tab-content { display: none; max-width: 860px; margin: 0 auto; padding: 12px; }
-.tab-content.active { display: block; }
-
-.map-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-@media (min-width: 768px) {
-  .map-grid {
-    grid-template-columns: 1.1fr 0.9fr;
-    align-items: start;
-  }
-}
-.map-canvas-wrap {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-}
-#mapCanvas {
-  width: 100%;
-  max-width: 440px;
-  max-height: 55vh;
-  aspect-ratio: 1/1;
-  object-fit: contain;
-  background: #10131a;
-  border-radius: 8px;
-  display: block;
-  margin: 0 auto;
-}
-.mob-scroll-list {
-  max-height: 440px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-.buff-pill {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: var(--bar); padding: 4px 8px; border-radius: 12px;
-  font-size: 11px; margin: 2px;
-}
-table.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
-table.tbl td { padding: 5px 0; border-bottom: 1px solid #1b1f2b; }
-table.tbl td:last-child { text-align: right; font-weight: 700; }
-.item-row { display: flex; align-items: center; gap: 8px; }
-.item-icon { width: 22px; height: 22px; image-rendering: pixelated; object-fit: contain; vertical-align: middle; }
-.item-link { color: var(--fg); text-decoration: none; font-weight: 500; }
-.item-link:hover { color: var(--gold); text-decoration: underline; }
-.mob-card { display: flex; align-items: center; justify-content: space-between; background: var(--bar); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; border: 1px solid var(--card-border); }
-.mob-left { display: flex; align-items: center; gap: 10px; }
-.mob-icon { width: 36px; height: 36px; image-rendering: pixelated; object-fit: contain; }
-.mob-name { font-size: 13px; font-weight: 700; color: var(--fg); text-decoration: none; }
-.mob-name:hover { color: var(--acc); text-decoration: underline; }
-.mob-hp { font-size: 11px; color: var(--dim); margin-top: 2px; }
-.actor-filter-pills { display: flex; gap: 4px; }
-.pill-btn {
-  background: var(--bar); color: var(--dim); border: 1px solid #2a3142;
-  border-radius: 12px; padding: 2px 8px; font-size: 10px; font-weight: 600;
-  cursor: pointer; transition: all 0.2s;
-}
-.pill-btn.active { background: var(--acc); color: var(--bg); border-color: var(--acc); }
-.pill-btn:hover { color: var(--fg); }
-.player-tag { background: rgba(0, 212, 255, 0.2); color: var(--acc); padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-left: 4px; border: 1px solid var(--acc); }
-.npc-tag { background: rgba(46, 204, 113, 0.2); color: var(--good); padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; margin-left: 4px; border: 1px solid var(--good); }
-.chat-box { max-height: 240px; overflow-y: auto; font-size: 12px; }
-.msg-row { padding: 4px 0; border-bottom: 1px solid #1b1f2b; }
-.msg-who { color: var(--acc); font-weight: 600; }
-.msg-bc { color: var(--gold); font-weight: 700; }
-.search-input {
-  width: 100%; padding: 8px 10px; background: var(--bar);
-  border: 1px solid #2a3142; border-radius: 6px;
-  color: var(--fg); font-size: 12px; margin-bottom: 8px; outline: none;
-}
-.modal-bg {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-  display: none; align-items: center; justify-content: center; z-index: 200;
-  padding: 16px;
-}
-.modal-bg.show { display: flex; }
-.modal-card {
-  background: var(--bg-card); border: 1px solid #2a3142;
-  border-radius: 10px; padding: 20px; width: 100%; max-width: 340px;
-}
-.btn {
-  background: var(--acc); color: var(--bg); font-weight: 700;
-  padding: 10px 16px; border-radius: 6px; border: none;
-  cursor: pointer; width: 100%; margin-top: 8px; font-size: 13px;
-}
-.btn-sec {
-  background: var(--bar); color: var(--fg); font-weight: 600;
-  padding: 8px 12px; border-radius: 6px; border: 1px solid #2a3142;
-  cursor: pointer; font-size: 12px; margin-top: 6px; width: 100%;
-}
-.client-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--bar); border: 1px solid #2a3142;
-  padding: 4px 10px; border-radius: 14px; font-size: 11px;
-  font-weight: 600; color: var(--dim); cursor: pointer;
-  transition: all 0.2s; margin-right: 6px;
-}
-.client-pill.active {
-  background: rgba(127, 209, 255, 0.15);
-  border-color: var(--acc); color: var(--acc);
-  box-shadow: 0 0 10px rgba(127, 209, 255, 0.25);
-}
-.fleet-item {
-  background: var(--bar); border: 1px solid #2a3142; border-radius: 6px; padding: 8px 10px; cursor: pointer; transition: border-color 0.2s;
-}
-.fleet-item.active {
-  border-color: var(--acc); background: rgba(27, 31, 43, 0.8);
-}
-.legal-footer {
-  text-align: center;
-  padding: 16px 8px 14px 8px;
-  font-size: 10px;
-  color: var(--dim);
-  line-height: 1.5;
-}
-</style>
+<link rel="preconnect" href="https://midgardhub.com" crossorigin>
+<link rel="dns-prefetch" href="https://midgardhub.com">
+<link rel="stylesheet" href="style.css?v=1.3.1">
 </head>
 <body>
 
@@ -333,23 +135,41 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
   <div class="legal-footer">All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.</div>
 </div>
 
-<!-- TAB: LOOT -->
+<!-- TAB: ITEMS & INVENTORY -->
 <div id="tab-loot" class="tab-content">
-  <div class="card">
-    <div class="card-title"><span>Session Drops</span><span id="lootRate" class="good"></span></div>
-    <table class="tbl"><tbody id="lootTable"></tbody></table>
+  <div class="card" style="margin-bottom: 8px;">
+    <!-- Primary Category Bar -->
+    <div style="display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch;">
+      <button class="pill-btn active" id="pillMainInv" onclick="setInvCategory('inventory')">🎒 Inventory</button>
+      <button class="pill-btn" id="pillMainCart" onclick="setInvCategory('cart')">🛒 Push Cart</button>
+      <button class="pill-btn" id="pillMainStorage" onclick="setInvCategory('storage')">🏦 Storage</button>
+      <button class="pill-btn" id="pillMainLoot" onclick="setInvCategory('loot')">📦 Session Drops</button>
+    </div>
+
+    <!-- Sub-Category Filter Pills (Dynamically populated for Inventory/Storage) -->
+    <div id="subPillsWrap" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1f2433;"></div>
   </div>
+
   <div class="card">
     <div class="card-title">
-      <span><span id="invTitle">Items</span> (<span id="invCount">0</span>)</span>
-      <div class="actor-filter-pills" id="invCategoryPills">
-        <button class="pill-btn active" id="pillInv" onclick="setInvCategory('inventory')">Inventory</button>
-        <button class="pill-btn" id="pillCart" onclick="setInvCategory('cart')">Cart</button>
-        <button class="pill-btn" id="pillStorage" onclick="setInvCategory('storage')">Storage</button>
+      <span id="invTitle">Inventory</span>
+      <span id="invCapacitySummary" class="acc" style="font-size: 10px; font-weight: 700;">-</span>
+    </div>
+
+    <!-- Search & Sort Controls -->
+    <div style="display: flex; gap: 6px; margin-bottom: 8px; align-items: center;">
+      <input type="text" id="invSearch" class="search-input" placeholder="🔍 Search items in list…" style="margin-bottom: 0;" oninput="renderInv()">
+      <div style="display: flex; gap: 3px; flex-shrink: 0;">
+        <button class="pill-btn active" id="sortSlotBtn" onclick="setSortMode('slot')" title="In-Game Slot Order"># Slot</button>
+        <button class="pill-btn" id="sortQtyBtn" onclick="setSortMode('qty')" title="Highest Quantity">Qty ▾</button>
+        <button class="pill-btn" id="sortNameBtn" onclick="setSortMode('name')" title="Alphabetical">A-Z</button>
       </div>
     </div>
-    <input type="text" id="invSearch" class="search-input" placeholder="Filter items…" oninput="renderInv()">
-    <table class="tbl"><tbody id="invTable"></tbody></table>
+
+    <!-- Scrollable Items Table with Persistent Scroll -->
+    <div id="invScrollContainer" style="max-height: 520px; overflow-y: auto; padding-right: 2px;">
+      <table class="tbl"><tbody id="invTable"></tbody></table>
+    </div>
   </div>
   <div class="legal-footer">All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.</div>
 </div>
@@ -403,6 +223,41 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
   </footer>
 </div>
 
+<!-- TAB: HISTORY -->
+<div id="tab-history" class="tab-content">
+  <div class="card">
+    <div class="card-title"><span>📅 Daily Farming Archive</span><span class="acc" style="font-size:10px;">HISTORY</span></div>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:4px;" id="historyDatePills">
+      <button class="client-pill active" onclick="selectHistoryDate('today')">Today</button>
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;" id="historyCharPills"></div>
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-title">Base EXP Gained</div><div class="kpi-val" id="histBaseExp">-</div></div>
+      <div class="kpi-card"><div class="kpi-title">Job EXP Gained</div><div class="kpi-val" id="histJobExp">-</div></div>
+      <div class="kpi-card"><div class="kpi-title">Net Zeny Profit</div><div class="kpi-val" id="histZeny">-</div></div>
+      <div class="kpi-card"><div class="kpi-title">Monsters Slain</div><div class="kpi-val" id="histKills">-</div></div>
+      <div class="kpi-card"><div class="kpi-title">Active Play Time</div><div class="kpi-val" id="histActiveTime">-</div></div>
+      <div class="kpi-card"><div class="kpi-title">Best Hit Damage</div><div class="kpi-val" id="histBestHit">-</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>Monster Hunting Breakdown</span><span class="acc" id="histMobTotal">0 Kills</span></div>
+    <table class="data-table">
+      <thead><tr><th>Monster</th><th style="text-align:right;">Kills</th></tr></thead>
+      <tbody id="histMobTable"><tr><td style="color:var(--dim)">No kills recorded</td><td></td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span>Loot Drop Ledger</span><span class="acc" id="histLootTotal">0 Items</span></div>
+    <table class="data-table">
+      <thead><tr><th>Time</th><th>Item</th><th style="text-align:right;">Qty</th></tr></thead>
+      <tbody id="histLootTable"><tr><td colspan="3" style="color:var(--dim)">No loot drops recorded</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- BOTTOM NAVIGATION -->
 <nav class="bottom-nav">
   <button class="nav-item active" onclick="showTab('overview')"><div class="nav-icon">📊</div>Overview</button>
@@ -410,6 +265,7 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
   <button class="nav-item" onclick="showTab('map')"><div class="nav-icon">🗺️</div>Map</button>
   <button class="nav-item" onclick="showTab('loot')"><div class="nav-icon">💎</div>Loot</button>
   <button class="nav-item" onclick="showTab('chat')"><div class="nav-icon">💬</div>Chat</button>
+  <button class="nav-item" onclick="showTab('history')"><div class="nav-icon">📅</div>History</button>
   <button class="nav-item" onclick="showTab('settings')"><div class="nav-icon">⚙️</div>Settings</button>
 </nav>
 
@@ -430,665 +286,6 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
   </div>
 </div>
 
-<script>
-const $ = id => document.getElementById(id);
-let activeTab = 'overview';
-let currentInv = [];
-let lastSnapshot = null;
-let activeStreamUrl = '';
-let isResolvingStream = false;
-let failedPolls = 0;
-let prevHp = null;
-let prevBaseLv = null;
-let mapCache = {};
-
-const n = v => v == null ? '-' : Math.abs(v) >= 1e9 ? (v/1e9).toFixed(2)+'B' : Math.abs(v) >= 1e6 ? (v/1e6).toFixed(2)+'M' : Math.abs(v) >= 1e4 ? (v/1e3).toFixed(1)+'k' : Math.round(v).toLocaleString();
-const dur = s => {
-  if (s == null) return '-'; s = Math.max(0, s|0);
-  const d = s/86400|0, h = s%86400/3600|0, m = s%3600/60|0;
-  return d ? d+'d '+h+'h' : h ? h+'h '+String(m).padStart(2,'0')+'m' : m ? m+'m '+String(s%60).padStart(2,'0')+'s' : s+'s';
-};
-
-// --- Pairing Management ---
-function getRoom() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const r = urlParams.get('room') || urlParams.get('r');
-  if (r) {
-    localStorage.setItem('roz_room', r.toUpperCase());
-    return r.toUpperCase();
-  }
-  return (localStorage.getItem('roz_room') || '').toUpperCase();
-}
-
-function getPin() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const p = urlParams.get('pin') || urlParams.get('p');
-  if (p) {
-    localStorage.setItem('roz_pin', p.toUpperCase());
-    return p.toUpperCase();
-  }
-  return (localStorage.getItem('roz_pin') || '').toUpperCase();
-}
-
-function getStreamParam() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const s = urlParams.get('stream') || urlParams.get('s') || urlParams.get('url');
-  if (s) {
-    localStorage.setItem('roz_stream_url', s);
-    return s;
-  }
-  return localStorage.getItem('roz_stream_url') || '';
-}
-
-function submitPairing() {
-  const room = $('pairRoomInput').value.trim().toUpperCase();
-  const pin = $('pairPinInput').value.trim().toUpperCase();
-  if (room) {
-    localStorage.setItem('roz_room', room);
-    if (pin) localStorage.setItem('roz_pin', pin);
-    $('pairModal').classList.remove('show');
-    resolveAndConnect();
-  }
-}
-
-function rePair() {
-  $('pairRoomInput').value = getRoom();
-  $('pairPinInput').value = getPin();
-  $('pairModal').classList.add('show');
-}
-
-function unpair() {
-  localStorage.removeItem('roz_room');
-  localStorage.removeItem('roz_pin');
-  localStorage.removeItem('roz_stream_url');
-  activeStreamUrl = '';
-  window.location.href = window.location.pathname;
-}
-
-// --- Cloud Stream Discovery ---
-async function resolveAndConnect() {
-  const room = getRoom();
-  if (!room) {
-    $('pairModal').classList.add('show');
-    return;
-  }
-  $('hdrRoom').textContent = `ROOM: ${room}`;
-  $('cfgRoomDisplay').textContent = room;
-  $('cfgPinDisplay').textContent = getPin() ? '••••' : 'None';
-
-  if (isResolvingStream) return;
-  isResolvingStream = true;
-  $('charLoc').textContent = 'finding PC…';
-
-  try {
-    const pin = getPin();
-
-    // Tier 1: Direct stream parameter if provided
-    const directStream = getStreamParam();
-    if (directStream) {
-      try {
-        const candidate = directStream.replace(/[/]+$/, '');
-        const testRes = await fetch(`${candidate}/status.json?t=${Date.now()}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`, { signal: AbortSignal.timeout(3000) });
-        if (testRes.ok || testRes.status === 401 || testRes.status === 403) {
-          activeStreamUrl = candidate;
-          $('cfgStreamUrl').textContent = activeStreamUrl;
-          $('charLoc').textContent = 'connected!';
-          $('liveDot').classList.remove('off');
-          tick();
-          return;
-        }
-      } catch (e) {}
-    }
-
-    // Tier 2: Local loopback (instant on PC desktop browser)
-    try {
-      const localRes = await fetch(`http://127.0.0.1:8777/status.json?t=${Date.now()}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`, { signal: AbortSignal.timeout(1200) });
-      if (localRes.ok || localRes.status === 401 || localRes.status === 403) {
-        activeStreamUrl = 'http://127.0.0.1:8777';
-        $('cfgStreamUrl').textContent = activeStreamUrl;
-        $('charLoc').textContent = 'connected (local)';
-        $('liveDot').classList.remove('off');
-        tick();
-        return;
-      }
-    } catch (e) {}
-
-    // Tier 3: Multi-relay cloud discovery
-    const servers = ['https://ntfy.envs.net', 'https://ntfy.sh'];
-    const topic = `roz_${room.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
-
-    for (const srv of servers) {
-      try {
-        const res = await fetch(`${srv}/${encodeURIComponent(topic)}/json?poll=1&since=all`, { signal: AbortSignal.timeout(3000) });
-        if (res.ok) {
-          const text = await res.text();
-          const lines = text.trim().split('\n');
-          for (let i = lines.length - 1; i >= 0; i--) {
-            try {
-              const item = JSON.parse(lines[i]);
-              if (item.message) {
-                const data = JSON.parse(item.message);
-                if (data.url) {
-                  const candidateUrl = data.url.replace(/[/]+$/, '');
-                  try {
-                    const candidatePin = pin || data.pin;
-                    const testRes = await fetch(`${candidateUrl}/status.json?t=${Date.now()}${candidatePin ? '&pin=' + encodeURIComponent(candidatePin) : ''}`, { signal: AbortSignal.timeout(3500) });
-                    if (testRes.ok || testRes.status === 401 || testRes.status === 403) {
-                      activeStreamUrl = candidateUrl;
-                      localStorage.setItem('roz_stream_url', candidateUrl);
-                      if (data.pin && !getPin()) localStorage.setItem('roz_pin', data.pin);
-                      $('cfgStreamUrl').textContent = activeStreamUrl;
-                      $('charLoc').textContent = 'connected!';
-                      $('liveDot').classList.remove('off');
-                      tick();
-                      return;
-                    }
-                  } catch (connErr) {}
-                }
-              }
-            } catch(e){}
-          }
-        }
-      } catch (srvErr) {}
-    }
-
-    $('charLoc').innerHTML = '<span style="color:var(--bad);cursor:pointer;" onclick="resolveAndConnect()">🔴 PC Offline (retrying…)</span>';
-    $('liveDot').classList.add('off');
-    activeStreamUrl = '';
-  } catch(err) {
-    $('charLoc').innerHTML = '<span style="color:var(--bad);cursor:pointer;" onclick="resolveAndConnect()">🔴 PC Offline (retrying…)</span>';
-    $('liveDot').classList.add('off');
-    activeStreamUrl = '';
-  } finally {
-    isResolvingStream = false;
-  }
-}
-
-// Background auto-resolver every 4s when offline
-setInterval(() => {
-  if (!activeStreamUrl && getRoom()) {
-    resolveAndConnect();
-  }
-}, 4000);
-
-// --- Navigation ---
-function showTab(name) {
-  activeTab = name;
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  const targetTab = $('tab-' + name);
-  if (targetTab) targetTab.classList.add('active');
-  const btns = document.querySelectorAll('.nav-item');
-  const tabs = ['overview', 'combat', 'map', 'loot', 'chat', 'settings'];
-  const idx = tabs.indexOf(name);
-  if (idx !== -1 && btns[idx]) btns[idx].classList.add('active');
-  if (name === 'map' && lastSnapshot) {
-    drawMap(lastSnapshot.location || {}, lastSnapshot.actors || lastSnapshot.monsters || []);
-  }
-}
-
-// --- Synthesized Audio Alarms ---
-let audioCtx = null;
-function getAudioContext() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
-}
-
-function alarmLowHp() {
-  try {
-    const ctx = getAudioContext();
-    let t = ctx.currentTime;
-    for (let i = 0; i < 3; i++) {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(880, t);
-      osc.frequency.linearRampToValueAtTime(440, t + 0.15);
-      g.gain.setValueAtTime(0.3, t);
-      g.gain.linearRampToValueAtTime(0.01, t + 0.15);
-      osc.connect(g); g.connect(ctx.destination);
-      osc.start(t); osc.stop(t + 0.15);
-      t += 0.2;
-    }
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-  } catch(e){}
-}
-
-function alarmLevelUp() {
-  try {
-    const ctx = getAudioContext();
-    let t = ctx.currentTime;
-    const notes = [523.25, 659.25, 783.99, 1046.50];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, t + i * 0.1);
-      g.gain.setValueAtTime(0.25, t + i * 0.1);
-      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.25);
-      osc.connect(g); g.connect(ctx.destination);
-      osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.25);
-    });
-  } catch(e){}
-}
-
-// --- Actor Filter & Render ---
-let currentActors = [];
-let actorFilter = 'all';
-
-function setActorFilter(f) {
-  actorFilter = f;
-  ['pillAll', 'pillMobs', 'pillPlayers', 'pillNpcs'].forEach(id => {
-    const el = $(id);
-    if (el) el.classList.remove('active');
-  });
-  if (f === 'all' && $('pillAll')) $('pillAll').classList.add('active');
-  if (f === 'mob' && $('pillMobs')) $('pillMobs').classList.add('active');
-  if (f === 'player' && $('pillPlayers')) $('pillPlayers').classList.add('active');
-  if (f === 'npc' && $('pillNpcs')) $('pillNpcs').classList.add('active');
-  renderActorList();
-}
-
-function renderActorList() {
-  const container = $('mobListContainer');
-  if (!container) return;
-
-  let list = currentActors || [];
-  if (actorFilter === 'mob') list = list.filter(a => !a.kind || a.kind === 'mob');
-  else if (actorFilter === 'player') list = list.filter(a => a.kind === 'player');
-  else if (actorFilter === 'npc') list = list.filter(a => a.kind === 'npc' || a.kind === 'portal');
-
-  $('mobCount').textContent = currentActors ? currentActors.length : 0;
-
-  if (list && list.length > 0) {
-    container.innerHTML = list.map(a => {
-      const isMob = !a.kind || a.kind === 'mob';
-      const isPlayer = a.kind === 'player';
-      const isPortal = a.kind === 'portal';
-      const isNpc = a.kind === 'npc';
-
-      if (isMob) {
-        return `
-          <div class="mob-card">
-            <div class="mob-left">
-              <img src="https://midgardhub.com/images/monsters/${a.id}.gif" onerror="this.onerror=null;this.src='https://midgardhub.com/images/monsters/${a.id}.png';" class="mob-icon" alt="">
-              <div>
-                <div>
-                  <a href="https://midgardhub.com/database/monsters/${a.id}" target="_blank" class="mob-name">${a.name || ('Mob #' + a.id)}</a>
-                  ${a.boss ? '<span class="boss-tag">BOSS</span>' : ''}
-                </div>
-                <div class="mob-hp">Pos: (${a.x}, ${a.y})${a.hp && a.hp > 0 ? ` · HP: ${a.hp.toLocaleString()}` : ''}</div>
-              </div>
-            </div>
-            <a href="https://midgardhub.com/database/monsters/${a.id}" target="_blank" style="color:var(--dim);font-size:11px;text-decoration:none;padding:4px 6px;border:1px solid #2a3142;border-radius:4px;">↗ DB</a>
-          </div>
-        `;
-      } else if (isPlayer) {
-        return `
-          <div class="mob-card" style="border-left: 3px solid var(--acc);">
-            <div class="mob-left">
-              <img src="jobicons/icon_job_${a.id}.png" onerror="this.onerror=null;this.src='jobicons/icon_job_0.png';" class="mob-icon" alt="">
-              <div>
-                <div>
-                  <span class="mob-name" style="color:var(--acc);">${a.name}</span>
-                  <span class="player-tag">${a.job || 'Player'}</span>
-                </div>
-                <div class="mob-hp">Pos: (${a.x}, ${a.y})${a.hp && a.hp > 0 ? ` · HP: ${a.hp.toLocaleString()}` : ''}</div>
-              </div>
-            </div>
-            <span style="color:var(--dim);font-size:11px;">Player</span>
-          </div>
-        `;
-      } else {
-        return `
-          <div class="mob-card" style="border-left: 3px solid var(--good);">
-            <div class="mob-left">
-              <div style="font-size: 20px; width: 36px; text-align: center;">${isPortal ? '🌀' : '🏛️'}</div>
-              <div>
-                <div>
-                  <span class="mob-name" style="color:var(--good);">${a.name}</span>
-                  <span class="npc-tag">${isPortal ? 'WARP' : 'NPC'}</span>
-                </div>
-                <div class="mob-hp">Pos: (${a.x}, ${a.y})</div>
-              </div>
-            </div>
-            <span style="color:var(--dim);font-size:11px;">${isPortal ? 'Portal' : 'NPC'}</span>
-          </div>
-        `;
-      }
-    }).join('');
-  } else {
-    container.innerHTML = `
-      <div style="color:var(--dim);text-align:center;padding:24px 10px;font-size:12px;">
-        No ${actorFilter === 'all' ? 'entities' : actorFilter + 's'} currently in sight<br>
-        <span style="font-size:11px;color:#50576a;">Walk near entities to track on radar</span>
-      </div>`;
-  }
-}
-
-// --- Minimap Canvas ---
-function drawMap(loc, actors = []) {
-  const canvas = $('mapCanvas');
-  if (!canvas) return;
-  const g = canvas.getContext('2d');
-  const S = canvas.width;
-  g.clearRect(0, 0, S, S);
-
-  currentActors = (actors && actors.length > 0) ? actors : (lastSnapshot && (lastSnapshot.actors || lastSnapshot.monsters)) || [];
-
-  const mapName = loc.map || '';
-  const x = loc.x || 0, y = loc.y || 0;
-  $('mapCoords').textContent = mapName ? `${mapName} (${x}, ${y})` : 'No map';
-
-  if (!mapName) {
-    g.fillStyle = '#1b1f2b'; g.font = '12px Segoe UI'; g.textAlign = 'center';
-    g.fillText('Waiting for map data…', S / 2, S / 2);
-    renderActorList();
-    return;
-  }
-
-  // Draw cached PNG or request
-  const pin = getPin();
-  const imgUrl = (activeStreamUrl || '') + `/map.png?m=${encodeURIComponent(mapName)}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`;
-  if (!mapCache[mapName]) {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = imgUrl;
-    img.onload = () => { mapCache[mapName] = img; drawMap(loc, currentActors); };
-  } else {
-    g.drawImage(mapCache[mapName], 0, 0, S, S);
-  }
-
-  // Project player coordinates
-  const cells = loc.cells || [400, 400];
-  const maxC = Math.max(cells[0], cells[1]) || 400;
-  const offX = (maxC - cells[0]) / 2, offY = (maxC - cells[1]) / 2;
-
-  // Draw walked trail
-  const trail = loc.trail || [];
-  if (trail.length > 1) {
-    g.strokeStyle = '#7fd1ff'; g.lineWidth = 1.5;
-    g.beginPath();
-    trail.forEach((p, idx) => {
-      const tx = (p[0] + offX) / maxC * S;
-      const ty = (maxC - (p[1] + offY)) / maxC * S;
-      if (idx === 0) g.moveTo(tx, ty); else g.lineTo(tx, ty);
-    });
-    g.stroke();
-  }
-
-  // Draw Nearby Actors on Radar
-  currentActors.forEach(a => {
-    const ax = (a.x + offX) / maxC * S;
-    const ay = (maxC - (a.y + offY)) / maxC * S;
-    const kind = a.kind || 'mob';
-
-    if (kind === 'player') {
-      g.fillStyle = '#00d4ff'; g.strokeStyle = '#ffffff'; g.lineWidth = 1;
-      g.beginPath(); g.arc(ax, ay, 4, 0, Math.PI * 2); g.fill(); g.stroke();
-    } else if (kind === 'npc' || kind === 'portal') {
-      g.fillStyle = '#2ecc71'; g.strokeStyle = '#10131a'; g.lineWidth = 1;
-      g.beginPath(); g.arc(ax, ay, 3.5, 0, Math.PI * 2); g.fill(); g.stroke();
-    } else if (a.boss) {
-      g.fillStyle = '#ffd479'; g.strokeStyle = '#ff4d4d'; g.lineWidth = 2;
-      g.beginPath(); g.arc(ax, ay, 6, 0, Math.PI * 2); g.fill(); g.stroke();
-    } else {
-      // High-visibility crimson monster blip
-      g.fillStyle = 'rgba(255, 77, 77, 0.4)';
-      g.beginPath(); g.arc(ax, ay, 6, 0, Math.PI * 2); g.fill();
-      g.fillStyle = '#ff3333'; g.strokeStyle = '#ffffff'; g.lineWidth = 1;
-      g.beginPath(); g.arc(ax, ay, 3.5, 0, Math.PI * 2); g.fill(); g.stroke();
-    }
-  });
-
-  // Draw Player Dot
-  const px = (x + offX) / maxC * S;
-  const py = (maxC - (y + offY)) / maxC * S;
-  g.strokeStyle = '#ffd479'; g.fillStyle = '#ffd479';
-  g.beginPath(); g.arc(px, py, 7, 0, Math.PI * 2); g.stroke();
-  g.beginPath(); g.arc(px, py, 3.5, 0, Math.PI * 2); g.fill();
-
-  renderActorList();
-}
-
-let invCategory = 'inventory';
-
-function setInvCategory(cat) {
-  invCategory = cat;
-  $('pillInv').classList.toggle('active', cat === 'inventory');
-  $('pillCart').classList.toggle('active', cat === 'cart');
-  $('pillStorage').classList.toggle('active', cat === 'storage');
-  $('invTitle').textContent = cat === 'cart' ? 'Cart Items' : (cat === 'storage' ? 'Storage Items' : 'Inventory');
-  updateInvSource();
-}
-
-function updateInvSource() {
-  if (!lastSnapshot) return;
-  const raw = (invCategory === 'cart' ? lastSnapshot.cart : invCategory === 'storage' ? lastSnapshot.storage : lastSnapshot.inventory) || [];
-  currentInv = raw.slice().sort((a,b) => b.count - a.count);
-  $('invCount').textContent = currentInv.length;
-  renderInv();
-}
-
-function renderInv() {
-  const filter = ($('invSearch').value || '').toLowerCase();
-  const filtered = currentInv.filter(i => (i.name || `item#${i.itid}`).toLowerCase().includes(filter));
-  $('invTable').innerHTML = filtered.slice(0, 50).map(i => `
-    <tr>
-      <td>
-        <div class="item-row">
-          <img src="https://midgardhub.com/images/items/${i.itid}.gif" onerror="this.src='https://midgardhub.com/images/items/${i.itid}.png';this.onerror=null;" class="item-icon" alt="">
-          <a href="https://midgardhub.com/database/items/${i.itid}" target="_blank" class="item-link">${i.name || ('Item #' + i.itid)}</a>
-        </div>
-      </td>
-      <td style="text-align:right;font-weight:700;">${i.count.toLocaleString()}</td>
-    </tr>
-  `).join('') || '<tr><td style="color:var(--dim)">No items found</td><td></td></tr>';
-}
-
-let selectedClientKey = null;
-
-function selectClient(key) {
-  selectedClientKey = key;
-  tick();
-}
-
-// --- Main Real-Time Tick ---
-async function tick() {
-  if (!activeStreamUrl) {
-    resolveAndConnect();
-    return;
-  }
-
-  const pin = getPin();
-  try {
-    const clientParam = selectedClientKey ? `&client=${encodeURIComponent(selectedClientKey)}` : '';
-    const url = `${activeStreamUrl}/status.json?t=${Date.now()}${clientParam}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
-        $('charLoc').textContent = 'PIN required';
-        $('liveDot').classList.add('off');
-        rePair();
-        return;
-      }
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const d = await res.json();
-    lastSnapshot = d;
-    failedPolls = 0;
-    $('liveDot').classList.remove('off');
-    $('hdrBackend').textContent = (d.capture || {}).backend || 'LIVE';
-
-    // Multi-Client / Multi-Character Support
-    const clients = d.clients || [];
-    const barEl = $('clientsBar');
-    const fleetCardEl = $('fleetCard');
-    if (clients.length > 1) {
-      if (barEl) {
-        barEl.style.display = 'flex';
-        barEl.innerHTML = clients.map(cl => {
-          const isAct = cl.active || (selectedClientKey && cl.key === selectedClientKey);
-          return `<button class="client-pill ${isAct ? 'active' : ''}" onclick="selectClient('${cl.key}')">
-            ${isAct ? '✓ ' : ''}${cl.name} (${cl.job} Lv ${cl.base_level ?? '-'})
-          </button>`;
-        }).join('');
-      }
-      if (fleetCardEl) {
-        fleetCardEl.style.display = 'block';
-        $('fleetCount').textContent = clients.length;
-        $('fleetList').innerHTML = clients.map(cl => {
-          const isAct = cl.active || (selectedClientKey && cl.key === selectedClientKey);
-          const hpP = cl.maxhp > 0 ? ((cl.hp || 0) / cl.maxhp * 100) : 0;
-          return `
-            <div class="fleet-item ${isAct ? 'active' : ''}" onclick="selectClient('${cl.key}')">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <div style="font-weight:700; color:${isAct ? 'var(--acc)' : 'var(--fg)'}; font-size:13px;">
-                  ${isAct ? '▶ ' : ''}${cl.name} <span style="font-weight:400; color:var(--dim); font-size:11px;">(${cl.job} Lv ${cl.base_level ?? '-'}/${cl.job_level ?? '-'})</span>
-                </div>
-                <div style="font-size:11px; font-weight:700; color:var(--good);">
-                  ${cl.base_per_hour ? n(cl.base_per_hour) + '/h' : '0/h'}
-                </div>
-              </div>
-              <div class="progress-bg" style="height:5px; margin-bottom:3px;"><div class="progress-fill" style="background:var(--hp); width:${Math.min(100, Math.max(0, hpP))}%;"></div></div>
-              <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--dim);">
-                <span>HP: ${cl.hp != null ? cl.hp.toLocaleString() : '-'}/${cl.maxhp != null ? cl.maxhp.toLocaleString() : '-'}</span>
-                <span>Map: ${cl.map || '-'}</span>
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-    } else {
-      if (barEl) barEl.style.display = 'none';
-      if (fleetCardEl) fleetCardEl.style.display = 'none';
-    }
-
-    const c = d.character || {}, e = d.exp || {}, v = d.vitals || {}, k = d.combat || {}, z = d.zeny || {}, l = d.loot || {};
-    const charName = c.name || 'Character';
-    const jobName = c.job || 'Novice';
-    $('charName').textContent = `${charName}  •  ${jobName}`;
-
-    const iconEl = $('charJobIcon');
-    if (iconEl) {
-      const jid = c.job_id != null ? c.job_id : 0;
-      iconEl.src = `jobicons/icon_job_${jid}.png`;
-      iconEl.style.display = 'block';
-    }
-    const loc = d.location || {};
-    $('charLoc').textContent = loc.map ? `${loc.map} (${loc.x || 0}, ${loc.y || 0})` : 'in-game';
-
-    // Vitals
-    const hp = v.hp, maxhp = v.maxhp, sp = v.sp, maxsp = v.maxsp;
-    const wt = v.weight, maxwt = v.maxweight;
-    const hpPct = (hp != null && maxhp != null && maxhp > 0) ? (hp / maxhp * 100) : 0;
-    const spPct = (sp != null && maxsp != null && maxsp > 0) ? (sp / maxsp * 100) : 0;
-    const wtPct = (wt != null && maxwt != null && maxwt > 0) ? (wt / maxwt * 100) : 0;
-
-    $('hpText').textContent = `${hp != null ? hp.toLocaleString() : '-'} / ${maxhp != null ? maxhp.toLocaleString() : '-'}`;
-    $('spText').textContent = `${sp != null ? sp.toLocaleString() : '-'} / ${maxsp != null ? maxsp.toLocaleString() : '-'}`;
-    $('wtText').textContent = `${wt != null ? wt.toLocaleString() : '-'} / ${maxwt != null ? maxwt.toLocaleString() : '-'}${wt != null && maxwt != null ? ` (${wtPct.toFixed(0)}%)` : ''}`;
-    $('hpBar').style.width = Math.min(100, Math.max(0, hpPct)) + '%';
-    $('spBar').style.width = Math.min(100, Math.max(0, spPct)) + '%';
-    $('wtBar').style.width = Math.min(100, Math.max(0, wtPct)) + '%';
-
-    // Alarms
-    if (prevHp !== null && hp > 0 && maxhp > 0 && (hp / maxhp) <= 0.25 && (prevHp / maxhp) > 0.25) alarmLowHp();
-    prevHp = hp;
-    const baseLv = c.base_level;
-    if (prevBaseLv !== null && typeof baseLv === 'number' && baseLv > prevBaseLv) alarmLevelUp();
-    prevBaseLv = typeof baseLv === 'number' ? baseLv : prevBaseLv;
-
-    // EXP
-    $('blv').textContent = `Base Lv ${baseLv ?? '-'}`;
-    $('jlv').textContent = `Job Lv ${c.job_level ?? '-'}`;
-    $('bpct').textContent = e.base_pct != null ? e.base_pct.toFixed(2) + '%' : '0.00%';
-    $('jpct').textContent = e.job_pct != null ? e.job_pct.toFixed(2) + '%' : '0.00%';
-    $('bbar').style.width = (e.base_pct || 0) + '%';
-    $('jbar').style.width = (e.job_pct || 0) + '%';
-    $('bph').textContent = n(e.base_per_hour);
-    $('jph').textContent = n(e.job_per_hour);
-    $('expTnl').textContent = e.tnl_base != null ? `TNL: ${n(e.tnl_base)}` : '-';
-    $('beta').textContent = dur(e.eta_base_sec);
-    $('killsOverview').textContent = `${(k.kills ?? 0).toLocaleString()} kills`;
-
-    // Zeny & Session
-    $('zeny').textContent = n(z.held);
-    $('zph').textContent = n(z.per_hour);
-    const s = d.session || {};
-    $('sessionTime').textContent = `Active ${dur(s.active_sec)} (Elapsed ${dur(s.elapsed_sec)})`;
-
-    // Combat & Buffs
-    $('dps').textContent = k.dps != null ? n(k.dps) + '/s' : '-';
-    $('bestHit').textContent = n(k.best_hit);
-    $('dmgDealt').textContent = n(k.damage_dealt);
-    $('dmgTaken').textContent = n(k.damage_taken);
-
-    const buffs = d.buffs || [];
-    $('buffCount').textContent = buffs.length;
-    $('buffsContainer').innerHTML = buffs.length ? buffs.map(b =>
-      `<div class="buff-pill"><span class="acc">#${b.index}</span> <b>${b.remain_sec == null ? '∞' : b.remain_sec < 0 ? 'Perm' : Math.round(b.remain_sec)+'s'}</b></div>`
-    ).join('') : '<span style="color:var(--dim)">No active buffs</span>';
-
-    // Loot & Inventory
-    const lootList = l.items || [];
-    $('lootRate').textContent = l.per_hour ? `${n(l.per_hour)}/h` : '';
-    const lootArr = Array.isArray(lootList) ? lootList : Object.entries(lootList || {}).map(([itid, count]) => ({itid, count}));
-    if (lootArr.length) {
-      $('lootTable').innerHTML = lootArr.slice(0, 40).map(item => `
-        <tr>
-          <td>
-            <div class="item-row">
-              <img src="https://midgardhub.com/images/items/${item.itid}.gif" onerror="this.src='https://midgardhub.com/images/items/${item.itid}.png';this.onerror=null;" class="item-icon" alt="">
-              <a href="https://midgardhub.com/database/items/${item.itid}" target="_blank" class="item-link">${item.name || ('Item #' + item.itid)}</a>
-            </div>
-          </td>
-          <td style="text-align:right;font-weight:700;">${(item.count || 0).toLocaleString()}</td>
-        </tr>
-      `).join('');
-    } else {
-      $('lootTable').innerHTML = '<tr><td style="color:var(--dim)">Nothing dropped yet</td><td></td></tr>';
-    }
-
-    const hasCart = (d.cart && d.cart.length > 0);
-    const cartPill = $('pillCart');
-    if (cartPill) cartPill.style.display = hasCart ? 'inline-block' : 'none';
-    const hasStorage = (d.storage && d.storage.length > 0);
-    const storagePill = $('pillStorage');
-    if (storagePill) storagePill.style.display = hasStorage ? 'inline-block' : 'none';
-    updateInvSource();
-
-    // Map drawing with live actors and monsters
-    drawMap(loc, d.actors || d.monsters || []);
-
-    // Chat
-    const msgs = d.messages || [];
-    if (msgs.length) {
-      $('chatBox').innerHTML = msgs.slice(-25).reverse().map(m => {
-        const who = m.from ? `<span class="msg-who">${m.from}: </span>` : '';
-        const bc = m.kind === 'broadcast' ? '<span class="msg-bc">[Broadcast] </span>' : '';
-        return `<div class="msg-row">${bc}${who}${m.text || ''}</div>`;
-      }).join('');
-    }
-
-  } catch(err) {
-    $('liveDot').classList.add('off');
-    failedPolls++;
-    if (failedPolls >= 2) {
-      $('charLoc').textContent = 'reconnecting…';
-      resolveAndConnect();
-    }
-  }
-}
-
-// Initialize
-if (getRoom()) {
-  resolveAndConnect();
-} else {
-  $('pairModal').classList.add('show');
-}
-setInterval(tick, 2000);
-</script>
+<script src="app.js?v=1.3.1" defer></script>
 </body>
 </html>
