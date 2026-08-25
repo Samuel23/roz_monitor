@@ -94,7 +94,66 @@ Official release binary integrity and SHA-256 verification:
 
 ## 🛠️ Frequently Asked Questions & Troubleshooting
 
-### 🔐 1. Privacy & Account Credentials Guarantee
+### 📡 1. Packet Synchronization Lifecycle & Missing Details
+> **"Why does my inventory, cart, or character name occasionally show empty after launching the companion?"**
+
+Because ROZ Companion operates **100% passively** without injecting code or reading your game's memory, it captures data that is broadcasted via standard network protocols during normal gameplay:
+
+* **🎒 Backpack Inventory & Equipped Gear**:  
+  Transmitted by the server **only once upon entering a world map** after character selection.
+* **🛒 Merchant Push Cart**:  
+  Transmitted when opening your pushcart in-game (`Alt+W`).
+* **🏦 Storage**:  
+  Transmitted when opening Storage via NPC.
+* **🗺️ Character Name, Map, and Area Entities**:  
+  Broadcasted whenever you enter a new map, change zones, or use a **Fly Wing / Teleport** (even within the same map).
+
+> [!TIP]
+> **Recommended Best Practice for a 100% Full Sync:**  
+> If you start `ROZ_Overlay.exe` while already standing in the game world, simply press `Esc` $\rightarrow$ **Character Select** and re-enter your character. This prompts the server to re-broadcast your full inventory, equipment options, and character profile.
+
+---
+
+### 💾 2. Local Storage & Data Privacy Transparency
+> **"Where is my data saved, and what exactly is being recorded?"**
+
+All companion telemetry is saved strictly on your local PC in your user profile:
+```
+%LOCALAPPDATA%\ROZOverlay\
+```
+
+#### What files are stored locally?
+* `state.json`: Window coordinates, UI tab selection, sound volume, and character profile preferences.
+* `status.json` / `inventory.json` / `chat.json`: Temporary local telemetry snapshots used to power the desktop overlay and web dashboard.
+* `history/YYYY-MM-DD/<Character>/summary.json`: Daily farming summaries for reviewing personal EXP/hr rates, total zeny earnings, and monster drops.
+
+#### Sample of recorded data (`history/.../summary.json`):
+```json
+{
+  "date": "2026-08-25",
+  "character": "Solaris",
+  "job": "Knight",
+  "base_exp_gained": 145200,
+  "job_exp_gained": 98400,
+  "zeny_net": 125000,
+  "kills_total": 86,
+  "kills_breakdown": {
+    "Mandragora": 48,
+    "Poring": 38
+  },
+  "loot": {
+    "Stem": 48,
+    "Jellopy": 38
+  }
+}
+```
+
+> [!NOTE]
+> **No Sensitive Data Stored:** Passwords, account credentials, master logins, and private authentication tokens are never parsed or written to disk.
+
+---
+
+### 🔐 3. Privacy & Account Credentials Guarantee
 > **"How can I be 100% sure my login details, passwords, or PIN codes are never captured?"**
 
 * **Architecture Guarantee**: The companion tool completely ignores login and character authentication authentication servers. It passively listens only to active in-game world events once you are playing inside the game.
@@ -103,29 +162,21 @@ Official release binary integrity and SHA-256 verification:
 
 ---
 
-### 🔄 2. Incomplete or Blank Character Details
-> **"My character name, stats, or inventory aren't displaying after opening the overlay."**
-
-* **Reason**: The game server transmits full character inventory, stat blocks, and equipment lists only upon entering a world map. If you launch the overlay while already standing in the game, some initial packets may have been missed.
-* **Quick Fix**: Simply press `Esc` $\rightarrow$ **Character Select** and re-enter your character, or walk through any map warp portal / teleport. This prompts the server to re-broadcast fresh synchronization packets.
-
----
-
-### 👥 3. Multi-Client / Multi-Boxing Focus
+### 👥 4. Multi-Client / Multi-Boxing Focus
 > **"I am playing on multiple accounts. How do I switch which character the overlay is tracking?"**
 
 * **Instant Switching**: Look at the fleet selector bar at the top of the overlay window or mobile web portal. Click any character name to immediately switch live telemetry, inventory, and stats to that client window.
 
 ---
 
-### 📡 4. Telemetry Status Shows "Searching / Connecting"
+### 📡 5. Telemetry Status Shows "Searching / Connecting"
 > **"The overlay is open, but telemetry events are not incrementing."**
 
 * **Quick Fix**: Walk a few steps in-game or cast any skill. The capture engine passively detects the active socket as soon as the game client exchanges traffic with the server.
 
 ---
 
-### 📱 5. Mobile Web Portal Pairing
+### 📱 6. Mobile Web Portal Pairing
 > **"How do I connect my mobile phone or tablet to the live monitor?"**
 
 * **1-Scan Pairing**: Open the **Setup** tab on your desktop overlay and scan the pairing QR code with your phone's camera.
