@@ -744,13 +744,9 @@ async function refreshInventory(force) {
 let invSortMode = 'slot'; // 'slot', 'qty', 'name'
 let lastRenderedInvSig = '';
 
-// Where an item can be worn. The type byte says 4 for a costume hat and 4 for
-// a real one, so `location` is the only thing that tells them apart, and the
-// server sends it with every equipment entry.
-//
-// Verified against gear.bin: type 4 sits in body (0x10) and upper head
-// (0x100), type 5 in the right hand (0x2), and type 9 in both hands at once
-// (0x22) — ROZ gives a two-handed weapon a type of its own.
+// Which equipment slots an item can occupy, as a bitmask. A costume hat and an
+// ordinary one share the same item category, so the slot is what separates
+// them; a two-handed weapon takes both hand slots and is still a weapon.
 const LOC_COSTUME = 0x007C00;   // top, mid, low, garment, floor
 const LOC_SHADOW  = 0x3F0000;   // shadow armor/weapon/shield/shoes/accessories
 const LOC_R_HAND  = 0x000002;
@@ -1228,8 +1224,8 @@ async function tick() {
           const fromName = (m.from && m.from !== 'System') ? `${m.from} (Shout)` : 'Broadcast';
           prefix = `<span class="msg-bc">[${fromName}] </span>`;
         } else if (m.channel === 'self' || m.kind === 'self') {
-          // Our own public line, echoed back by ZC_NOTIFY_PLAYERCHAT. Marked
-          // so a log of one map's chatter is readable at a glance.
+          // Our own public line, marked so a log of one map's chatter is
+          // readable at a glance.
           prefix = `<span class="msg-who">${m.from || 'You'} (you): </span>`;
         } else if (m.from) {
           prefix = `<span class="msg-who">${m.from}: </span>`;
