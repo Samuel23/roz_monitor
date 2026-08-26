@@ -1,12 +1,15 @@
-﻿const CACHE_NAME = "roz-pwa-v1.3.1";
+﻿const CACHE_NAME = "roz-pwa-v1.5.0";
 const ASSETS = [
   "./",
   "index.html",
-  "style.css?v=1.3.1",
-  "app.js?v=1.3.1",
+  "style.css?v=1.5.0",
+  "app.js?v=1.5.0",
   "manifest.json",
   "favicon.ico"
 ];
+
+const LIVE = ["status.json", "inventory.json", "map.json", "chat.json",
+              "history.json", "map.png", "ntfy", "stream"];
 
 // Pre-cache core application shell
 self.addEventListener("install", e => {
@@ -29,7 +32,12 @@ self.addEventListener("activate", e => {
 // Network-First with Cache Fallback (Never cache live telemetry or maps)
 self.addEventListener("fetch", e => {
   const url = e.request.url;
-  if (url.includes("status.json") || url.includes("ntfy") || url.includes("map.png") || url.includes("stream")) {
+  // Live data, every one of them cache-busted by the caller and none of them
+  // meaningful a second later. inventory.json, map.json and chat.json joined
+  // this list when the containers, the walked trail and the chat log were
+  // split out of status.json: caching a per-client endpoint keyed by a
+  // ?t=<now> URL grows the cache without a single hit ever being reused.
+  if (LIVE.some(name => url.includes(name))) {
     return; // Pass through directly to live network
   }
   

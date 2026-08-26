@@ -9,6 +9,14 @@ let currentInv = [];
 let lastSnapshot = null;
 let activeStreamUrl = '';
 let isResolvingStream = false;
+// Set when the PC answers 401. Polling stops until the PIN is entered
+// again: the overlay throttles an address that keeps failing, so a
+// dashboard that retries twice a second with a stale PIN locks itself
+// out and then cannot get back in even once the PIN is right.
+let authBlocked = false;
+// One same-origin probe at a time: tick() and the background resolver both
+// call resolveAndConnect, and Tier 0 runs ahead of the isResolvingStream gate.
+let selfProbing = false;
 let failedPolls = 0;
 let prevHp = null;
 let prevBaseLv = null;
@@ -59,6 +67,11 @@ function submitPairing() {
     localStorage.setItem('roz_room', room);
     if (pin) localStorage.setItem('roz_pin', pin);
     $('pairModal').classList.remove('show');
+    authBlocked = false;
+    lastInventory = null;
+    lastInventoryKey = null;
+    lastMap = null;
+    lastMapKey = null;
     resolveAndConnect();
   }
 }
@@ -77,9 +90,56 @@ function unpair() {
   window.location.href = window.location.pathname;
 }
 
+// Is this page being served by the overlay itself? If it is, the PC is not
+// something to go looking for - it is the origin this file came from.
+function selfHosted() {
+  return /^https?:$/.test(window.location.protocol) &&
+         !/github\.io$|\.pages\.dev$/.test(window.location.hostname);
+}
+
 // --- Cloud Stream Discovery ---
 async function resolveAndConnect() {
   const room = getRoom();
+
+  // Tier 0: same origin. A dashboard opened at the overlay's own address
+  // already knows where the PC is, and asking it for a room code is asking a
+  // question it is standing on the answer to. Pairing exists for a phone
+  // loading this page from GitHub Pages, not for localhost:8777 - which, in a
+  // browser with no saved room, sat behind the pairing dialog forever with
+  // live telemetry one request away on the very same origin.
+  if (selfHosted() && !selfProbing) {
+    selfProbing = true;
+    try {
+      const pin = getPin();
+      const res = await fetch(`/status.json?t=${Date.now()}&lean=1` +
+                              `${pin ? '&pin=' + encodeURIComponent(pin) : ''}`,
+                              { signal: AbortSignal.timeout(2500) });
+      if (res.ok) {
+        activeStreamUrl = window.location.origin;
+        authBlocked = false;
+        $('pairModal').classList.remove('show');
+        $('cfgStreamUrl').textContent = activeStreamUrl;
+        $('charLoc').textContent = 'connected (this PC)';
+        $('liveDot').classList.remove('off');
+        tick();
+        return;
+      }
+      if (res.status === 401 || res.status === 403) {
+        // The overlay is right here; only the PIN is missing. Ask for that
+        // and nothing else.
+        activeStreamUrl = window.location.origin;
+        $('cfgStreamUrl').textContent = activeStreamUrl;
+        authBlocked = true;
+        rePair();
+        return;
+      }
+    } catch (e) {
+      /* not an overlay origin after all - fall through to pairing */
+    } finally {
+      selfProbing = false;
+    }
+  }
+
   if (!room) {
     $('pairModal').classList.add('show');
     return;
@@ -178,7 +238,7 @@ async function resolveAndConnect() {
 
 // Background auto-resolver every 4s when offline
 setInterval(() => {
-  if (!activeStreamUrl && getRoom()) {
+  if (!authBlocked && !activeStreamUrl && getRoom()) {
     resolveAndConnect();
   }
 }, 4000);
@@ -195,10 +255,12 @@ function showTab(name) {
   const idx = tabs.indexOf(name);
   if (idx !== -1 && btns[idx]) btns[idx].classList.add('active');
   if (name === 'map' && lastSnapshot) {
+    refreshMap();
     drawMap(lastSnapshot.location || {}, lastSnapshot.actors || lastSnapshot.monsters || []);
   } else if (name === 'loot') {
     updateSubPills();
     updateInvSource();
+    refreshInventory(true);
   } else if (name === 'history') {
     loadHistory();
   }
@@ -569,8 +631,10 @@ function drawMap(loc, actors = []) {
   const maxC = Math.max(cells[0], cells[1]) || 400;
   const offX = (maxC - cells[0]) / 2, offY = (maxC - cells[1]) / 2;
 
-  // Draw walked trail
-  const trail = loc.trail || [];
+  // Draw walked trail. It comes from /map.json, not the telemetry snapshot;
+  // loc.trail is the fallback for an older overlay that still inlines it.
+  const mapPayload = (lastMapKey === (selectedClientKey || '') && lastMap) || {};
+  const trail = (mapPayload.map === loc.map ? mapPayload.trail : null) || loc.trail || [];
   if (trail.length > 1) {
     g.strokeStyle = '#7fd1ff'; g.lineWidth = 1.5;
     g.beginPath();
@@ -618,10 +682,100 @@ function drawMap(loc, actors = []) {
 
 let invCategory = 'inventory';
 let invSubCategory = 'all';
+// Bags, carts, storage and the drop tally are no longer part of the
+// once-a-second telemetry: they are most of its weight and change a couple of
+// times an hour. They are fetched from /inventory.json while the Loot tab is
+// open, and cached here between refreshes.
+let lastInventory = null;
+let lastInventoryKey = null;
+let inventoryFetching = false;
+let invTicks = 0;
+// The walked trail is the same kind of payload: up to 400 cells, drawn only by
+// the map, and the largest single thing left in the telemetry snapshot.
+let lastMap = null;
+let lastMapKey = null;
+let mapFetching = false;
+
+async function refreshMap() {
+  const key = selectedClientKey || '';
+  if (mapFetching || !activeStreamUrl) return;
+  mapFetching = true;
+  try {
+    const pin = getPin();
+    const clientParam = selectedClientKey ? `&client=${encodeURIComponent(selectedClientKey)}` : '';
+    const res = await fetch(`${activeStreamUrl}/map.json?t=${Date.now()}${clientParam}` +
+                            `${pin ? '&pin=' + encodeURIComponent(pin) : ''}`);
+    if (res.ok) {
+      lastMap = await res.json();
+      lastMapKey = key;
+      if (activeTab === 'map' && lastSnapshot) {
+        drawMap(lastSnapshot.location || {}, lastSnapshot.actors || lastSnapshot.monsters || []);
+      }
+    }
+  } catch (e) {
+    /* the next tick tries again */
+  } finally {
+    mapFetching = false;
+  }
+}
+
+async function refreshInventory(force) {
+  const key = selectedClientKey || '';
+  if (inventoryFetching || (!force && lastInventoryKey === key && lastInventory)) return;
+  if (!activeStreamUrl) return;
+  inventoryFetching = true;
+  try {
+    const pin = getPin();
+    const clientParam = selectedClientKey ? `&client=${encodeURIComponent(selectedClientKey)}` : '';
+    const res = await fetch(`${activeStreamUrl}/inventory.json?t=${Date.now()}${clientParam}` +
+                            `${pin ? '&pin=' + encodeURIComponent(pin) : ''}`);
+    if (res.ok) {
+      lastInventory = await res.json();
+      lastInventoryKey = key;
+      lastRenderedInvSig = '';
+      if (activeTab === 'loot') updateInvSource();
+    }
+  } catch (e) {
+    /* the next tick tries again */
+  } finally {
+    inventoryFetching = false;
+  }
+}
 let invSortMode = 'slot'; // 'slot', 'qty', 'name'
 let lastRenderedInvSig = '';
 
-function classifyItem(itemType, itid, name) {
+// Where an item can be worn. The type byte says 4 for a costume hat and 4 for
+// a real one, so `location` is the only thing that tells them apart, and the
+// server sends it with every equipment entry.
+//
+// Verified against gear.bin: type 4 sits in body (0x10) and upper head
+// (0x100), type 5 in the right hand (0x2), and type 9 in both hands at once
+// (0x22) — ROZ gives a two-handed weapon a type of its own.
+const LOC_COSTUME = 0x007C00;   // top, mid, low, garment, floor
+const LOC_SHADOW  = 0x3F0000;   // shadow armor/weapon/shield/shoes/accessories
+const LOC_R_HAND  = 0x000002;
+const LOC_L_HAND  = 0x000020;
+const LOC_AMMO    = 0x008000;
+
+function classifyItem(itemType, itid, name, location) {
+  const n = (name || '').toLowerCase();
+  const loc = Number(location) || 0;
+
+  // Costume first, and by location before name: an armour worn in a costume
+  // slot IS a costume however it is named, and plenty of them carry no
+  // "[Costume]" tag at all.
+  if (loc & LOC_COSTUME) return 'costume';
+  if (loc & LOC_SHADOW) return 'costume';
+  if (n.includes('[costume]') || n.startsWith('costume ') ||
+      (itid >= 400000 && itid <= 499999) || (itid >= 310000 && itid <= 319999)) {
+    return 'costume';
+  }
+
+  // Then by where it is worn, which beats the type byte because it is
+  // unambiguous: a two-hander occupies both hands and is still a weapon.
+  if (loc & (LOC_R_HAND | LOC_L_HAND)) return 'weapon';
+  if (loc && !(loc & LOC_AMMO)) return 'armor';
+
   switch (Number(itemType)) {
     case 0:
     case 2:
@@ -630,9 +784,11 @@ function classifyItem(itemType, itid, name) {
     case 4:
       return 'armor';
     case 5:
+    case 9:                     // two-handed weapon
       return 'weapon';
     case 6:
       return 'card';
+    case 8:
     case 11:
     case 12:
       return 'costume';
@@ -645,16 +801,17 @@ function setInvCategory(cat) {
   invCategory = cat;
   invSubCategory = 'all';
   lastRenderedInvSig = '';
-  ['pillMainInv', 'pillMainCart', 'pillMainStorage', 'pillMainLoot'].forEach(id => {
+  ['pillMainInv', 'pillMainCart', 'pillMainStorage', 'pillMainGuildStorage', 'pillMainLoot'].forEach(id => {
     const el = $(id);
     if (el) el.classList.remove('active');
   });
   if (cat === 'inventory' && $('pillMainInv')) $('pillMainInv').classList.add('active');
   if (cat === 'cart' && $('pillMainCart')) $('pillMainCart').classList.add('active');
   if (cat === 'storage' && $('pillMainStorage')) $('pillMainStorage').classList.add('active');
+  if (cat === 'guild_storage' && $('pillMainGuildStorage')) $('pillMainGuildStorage').classList.add('active');
   if (cat === 'loot' && $('pillMainLoot')) $('pillMainLoot').classList.add('active');
 
-  $('invTitle').textContent = cat === 'cart' ? 'Push Cart' : (cat === 'storage' ? 'Kafra Storage' : (cat === 'loot' ? 'Session Drops' : 'Character Inventory'));
+  $('invTitle').textContent = cat === 'cart' ? 'Push Cart' : (cat === 'storage' ? 'Kafra Storage' : (cat === 'guild_storage' ? 'Guild Storage' : (cat === 'loot' ? 'Session Drops' : 'Character Inventory')));
   updateSubPills();
   updateInvSource();
 }
@@ -688,7 +845,7 @@ function updateSubPills() {
       <button class="pill-btn ${invSubCategory === 'etc' ? 'active' : ''}" onclick="setSubCategory('etc')">📦 Etc</button>
       <button class="pill-btn ${invSubCategory === 'fav' ? 'active' : ''}" onclick="setSubCategory('fav')">⭐ Fav</button>
     `;
-  } else if (invCategory === 'storage') {
+  } else if (invCategory === 'storage' || invCategory === 'guild_storage') {
     wrap.style.display = 'flex';
     wrap.innerHTML = `
       <button class="pill-btn ${invSubCategory === 'all' ? 'active' : ''}" onclick="setSubCategory('all')">🌐 All</button>
@@ -706,16 +863,20 @@ function updateSubPills() {
 
 function updateInvSource() {
   if (!lastSnapshot) return;
+  // The containers come from /inventory.json; the snapshot is only a fallback
+  // for a server old enough to still be sending them inline.
+  const inv = (lastInventoryKey === (selectedClientKey || '') && lastInventory) || {};
   const clientObj = (selectedClientKey && (lastSnapshot.clients || []).find(c => c.key === selectedClientKey)) || lastSnapshot;
   let raw = [];
-  if (invCategory === 'cart') raw = clientObj.cart || lastSnapshot.cart || [];
-  else if (invCategory === 'storage') raw = clientObj.storage || lastSnapshot.storage || [];
+  if (invCategory === 'cart') raw = inv.cart || clientObj.cart || [];
+  else if (invCategory === 'storage') raw = inv.storage || clientObj.storage || [];
+  else if (invCategory === 'guild_storage') raw = inv.guild_storage || clientObj.guild_storage || [];
   else if (invCategory === 'loot') {
-    const l = clientObj.loot || lastSnapshot.loot || {};
+    const l = inv.loot || clientObj.loot || lastSnapshot.loot || {};
     const lootList = l.items || l || [];
     raw = Array.isArray(lootList) ? lootList : Object.entries(lootList || {}).map(([itid, count]) => ({itid: Number(itid), count}));
   } else {
-    raw = clientObj.inventory || lastSnapshot.inventory || [];
+    raw = inv.inventory || clientObj.inventory || [];
   }
 
   currentInv = raw.slice();
@@ -729,7 +890,7 @@ function updateInvSource() {
     $('invCapacitySummary').textContent = `${count}/100 slots (${totalItems.toLocaleString()} items${wtStr})`;
   } else if (invCategory === 'cart') {
     $('invCapacitySummary').textContent = `${count}/100 slots (${totalItems.toLocaleString()} items)`;
-  } else if (invCategory === 'storage') {
+  } else if (invCategory === 'storage' || invCategory === 'guild_storage') {
     $('invCapacitySummary').textContent = `${count} slots (${totalItems.toLocaleString()} items)`;
   } else if (invCategory === 'loot') {
     const l = lastSnapshot.loot || {};
@@ -738,6 +899,27 @@ function updateInvSource() {
   }
 
   renderInv();
+}
+
+const OPTION_LABELS = {
+  1: "MHP +%d", 2: "MSP +%d", 3: "STR +%d", 4: "AGI +%d", 5: "VIT +%d", 6: "INT +%d", 7: "DEX +%d", 8: "LUK +%d",
+  9: "MHP +%d%%", 10: "MSP +%d%%", 11: "HP Recovery +%d%%", 12: "SP Recovery +%d%%", 13: "ATK +%d", 14: "ATK +%d%%",
+  15: "MATK +%d", 16: "MATK +%d%%", 17: "DEF +%d", 18: "MDEF +%d", 19: "MATK +%d", 20: "Critical +%d",
+  21: "Flee +%d", 22: "Hit +%d", 23: "Perfect Dodge +%d", 24: "Speed +%d%%", 25: "ASPD +%d", 26: "ASPD +%d%%",
+  27: "Cast Time -%d%%", 28: "After-Cast Delay -%d%%", 29: "SP Consumption -%d%%", 30: "Ranged Damage +%d%%",
+  31: "Heal +%d%%", 32: "Critical Damage +%d%%", 33: "Physical Melee Damage +%d%%"
+};
+
+function formatOption(opt) {
+  if (!opt) return "";
+  if (opt.text) return opt.text;
+  const idx = Number(opt.index);
+  const val = Number(opt.value) || 0;
+  const fmt = OPTION_LABELS[idx];
+  if (fmt) {
+    return fmt.replace("%d", String(val));
+  }
+  return `Opt #${idx}: +${val}`;
 }
 
 function renderInv() {
@@ -749,14 +931,14 @@ function renderInv() {
 
   // Filter by Sub-Category
   let list = currentInv.filter(item => {
-    const cat = classifyItem(item.type, item.itid, item.name);
+    const cat = classifyItem(item.type, item.itid, item.name, item.location);
     if (invCategory === 'inventory') {
       if (invSubCategory === 'usable') return cat === 'usable';
       if (invSubCategory === 'equip') return cat === 'weapon' || cat === 'armor' || cat === 'costume';
       if (invSubCategory === 'etc') return cat === 'etc' || cat === 'card';
       if (invSubCategory === 'fav') return item.fav === 1 || item.favorite;
       return true;
-    } else if (invCategory === 'storage') {
+    } else if (invCategory === 'storage' || invCategory === 'guild_storage') {
       if (invSubCategory === 'usable') return cat === 'usable';
       if (invSubCategory === 'weapon') return cat === 'weapon';
       if (invSubCategory === 'armor') return cat === 'armor';
@@ -784,7 +966,7 @@ function renderInv() {
   }
 
   // Signature check to prevent redundant redraws
-  const sig = `${invCategory}_${invSubCategory}_${invSortMode}_${query}_${list.map(i => `${i.itid}:${i.count}:${i.slot}`).join(',')}`;
+  const sig = `${invCategory}_${invSubCategory}_${invSortMode}_${query}_${list.map(i => `${i.itid}:${i.count}:${i.slot}:${i.refine || 0}:${(i.cards || []).join('-')}:${(i.options || []).length}`).join(',')}`;
   if (sig === lastRenderedInvSig) return;
   lastRenderedInvSig = sig;
 
@@ -798,11 +980,15 @@ function renderInv() {
 
   container.innerHTML = list.map((i, idx) => {
     const itid = i.itid;
-    const name = i.name || `Item #${itid}`;
+    let name = i.name || `Item #${itid}`;
     const count = Number(i.count) || 1;
     const slotNum = (i.slot != null) ? `#${i.slot}` : `#${idx + 1}`;
-    const cat = classifyItem(i.type, itid, name);
-    
+    const cat = classifyItem(i.type, itid, name, i.location);
+    const refine = Number(i.refine) || 0;
+    const grade = Number(i.grade) || 0;
+    const cards = i.cards || [];
+    const options = i.options || [];
+
     // Category tag style
     let tagHtml = '';
     if (cat === 'card') tagHtml = '<span style="font-size:9px;color:var(--gold);background:rgba(255,212,121,0.15);padding:1px 4px;border-radius:3px;margin-left:4px;">CARD</span>';
@@ -810,15 +996,47 @@ function renderInv() {
     else if (cat === 'armor') tagHtml = '<span style="font-size:9px;color:var(--acc);background:rgba(127,209,255,0.15);padding:1px 4px;border-radius:3px;margin-left:4px;">ARMOR</span>';
     else if (cat === 'costume') tagHtml = '<span style="font-size:9px;color:#d88df0;background:rgba(216,141,240,0.15);padding:1px 4px;border-radius:3px;margin-left:4px;">COSTUME</span>';
 
+    // Refine & Grade badges
+    let refineBadge = (refine > 0) ? `<span class="refine-badge">+${refine}</span>` : '';
+    let gradeBadge = (grade > 0) ? `<span class="grade-badge">Grade ${grade}</span>` : '';
+
+    // If name already starts with "+X ", strip it for clean display with badge
+    let cleanName = name;
+    if (cleanName.startsWith(`+${refine} `)) {
+      cleanName = cleanName.substring(`+${refine} `.length);
+    }
+
+    // Slotted cards chips
+    let cardsHtml = '';
+    if (cards.length > 0) {
+      cardsHtml = `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px;">` +
+        cards.map(cId => `<span class="card-chip">🎴 Card #${cId}</span>`).join('') +
+        `</div>`;
+    }
+
+    // Random Option chips
+    let optionsHtml = '';
+    if (options.length > 0) {
+      optionsHtml = `<div class="opt-container">` +
+        options.map(opt => `<span class="opt-chip">✨ ${formatOption(opt)}</span>`).join('') +
+        `</div>`;
+    }
+
     return `
       <tr>
         <td style="width:32px;color:var(--dim);font-size:10px;font-weight:700;text-align:center;">${slotNum}</td>
         <td>
           <div class="item-row">
             <img src="https://midgardhub.com/images/items/${itid}.png" onerror="this.onerror=null;this.src='https://midgardhub.com/images/items/${itid}.gif';" class="item-icon" alt="">
-            <div>
-              <a href="https://midgardhub.com/database/items/${itid}" target="_blank" class="item-link">${name}</a>
-              ${tagHtml}
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;flex-wrap:wrap;">
+                ${refineBadge}
+                ${gradeBadge}
+                <a href="https://midgardhub.com/database/items/${itid}" target="_blank" class="item-link">${cleanName}</a>
+                ${tagHtml}
+              </div>
+              ${cardsHtml}
+              ${optionsHtml}
             </div>
           </div>
         </td>
@@ -837,11 +1055,16 @@ let selectedClientKey = null;
 
 function selectClient(key) {
   selectedClientKey = key;
+  lastInventory = null;
+  lastInventoryKey = null;
+  lastMap = null;
+  lastMapKey = null;
   tick();
 }
 
 // --- Main Real-Time Tick ---
 async function tick() {
+  if (authBlocked) return;          // waiting on the pairing dialog
   if (!activeStreamUrl) {
     resolveAndConnect();
     return;
@@ -850,12 +1073,17 @@ async function tick() {
   const pin = getPin();
   try {
     const clientParam = selectedClientKey ? `&client=${encodeURIComponent(selectedClientKey)}` : '';
-    const url = `${activeStreamUrl}/status.json?t=${Date.now()}${clientParam}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`;
+    // lean=1 says this page fetches containers from /inventory.json and
+    // the walked trail from /map.json, so the overlay can leave both out
+    // of a payload it re-sends every second. Without the flag it sends
+    // them inline, which is what keeps an older deployed portal working.
+    const url = `${activeStreamUrl}/status.json?t=${Date.now()}&lean=1${clientParam}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`;
     const res = await fetch(url);
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) {
         $('charLoc').textContent = 'PIN required';
         $('liveDot').classList.add('off');
+        authBlocked = true;
         rePair();
         return;
       }
@@ -977,10 +1205,18 @@ async function tick() {
       `<div class="buff-pill"><span class="acc">#${b.index}</span> <b>${b.remain_sec == null ? '∞' : b.remain_sec < 0 ? 'Perm' : Math.round(b.remain_sec)+'s'}</b></div>`
     ).join('') : '<span style="color:var(--dim)">No active buffs</span>';
 
-    // Items, Inventory, Cart & Storage
+    // Items, Inventory, Cart & Storage. The containers ride a slower request
+    // of their own - every fifth tick, and only while their tab is on screen.
+    if (activeTab === 'loot') {
+      invTicks = (invTicks + 1) % 5;
+      refreshInventory(invTicks === 0);
+    }
     updateInvSource();
 
-    // Map drawing with live actors and monsters
+    // Map drawing with live actors and monsters. The player dot and the mobs
+    // come from the snapshot every tick; the trail behind them is fetched on
+    // its own, and only while the map is being looked at.
+    if (activeTab === 'map') refreshMap();
     drawMap(loc, d.actors || d.monsters || []);
 
     // Chat
@@ -991,6 +1227,10 @@ async function tick() {
         if (m.channel === 'broadcast' || m.kind === 'broadcast') {
           const fromName = (m.from && m.from !== 'System') ? `${m.from} (Shout)` : 'Broadcast';
           prefix = `<span class="msg-bc">[${fromName}] </span>`;
+        } else if (m.channel === 'self' || m.kind === 'self') {
+          // Our own public line, echoed back by ZC_NOTIFY_PLAYERCHAT. Marked
+          // so a log of one map's chatter is readable at a glance.
+          prefix = `<span class="msg-who">${m.from || 'You'} (you): </span>`;
         } else if (m.from) {
           prefix = `<span class="msg-who">${m.from}: </span>`;
         }

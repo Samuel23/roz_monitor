@@ -203,3 +203,59 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
   color: var(--dim);
   line-height: 1.5;
 }
+
+/* Equipment Refine, Grade, Card Slots & Random Options */
+.refine-badge {
+  color: #ffd479;
+  font-weight: 800;
+  font-size: 11px;
+  margin-right: 3px;
+  text-shadow: 0 0 4px rgba(255, 212, 121, 0.4);
+}
+.grade-badge {
+  background: rgba(186, 104, 200, 0.2);
+  color: #ba68c8;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(186, 104, 200, 0.4);
+  margin-right: 3px;
+}
+.slot-badge {
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 2px;
+}
+.card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 212, 121, 0.12);
+  color: #ffd479;
+  border: 1px solid rgba(255, 212, 121, 0.3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  font-weight: 600;
+  margin-top: 2px;
+  margin-right: 3px;
+}
+.opt-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+.opt-chip {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(127, 209, 255, 0.1);
+  color: var(--acc);
+  border: 1px solid rgba(127, 209, 255, 0.25);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+}

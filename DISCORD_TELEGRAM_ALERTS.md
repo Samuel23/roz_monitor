@@ -81,6 +81,9 @@ Telegram bots allow ROZ Companion to send direct private messages directly to yo
 
 ## ⚙️ Advanced Settings & Customization
 
-* **HP Threshold**: Set custom trigger percentages (default is `< 25%`).
-* **Debounce & Spam Protection**: Low HP warnings are automatically debounced to prevent spamming while recovering.
-* **Multi-Client Routing**: Alerts automatically identify which character and game client triggered the event.
+* **🎴 Monster Cards & Costumes**: All monster cards (Item Type 6) and costumes (Item Type 8) automatically trigger rich golden/purple embed alerts.
+* **⚔️ Equipment Random Options**: Weapons and armors only alert when dropping with **2 or more random option bonuses** (configurable via *Min Random Options*).
+* **📋 Custom Rare Item Watchlist**: Customize the list of item IDs in the Alerts dialog (e.g. `603, 604, 607, 608, 616, 617, 644, 674, 12020, 7049`). Any item matching your watchlist triggers an instant alert!
+* **🚨 Low HP Threshold**: Customize the warning trigger percentage (default is `< 25%`).
+* **🛡️ Debounce & Spam Protection**: Warnings are automatically debounced to prevent notification spamming while recovering.
+* **👥 Multi-Client Routing**: Alerts automatically report the character name and zone map that triggered the event.

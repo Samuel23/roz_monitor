@@ -59,8 +59,8 @@ Official release binary integrity and SHA-256 verification:
 
 | File | Size | SHA-256 Checksum |
 |:---|:---|:---|
-| **`ROZ_Overlay.exe`** | 12.6 MB | `8b54b2dd25b653edf1e3956b5a56f42fbb3990e5d2d864baca8227cf7a0787b3` |
-| **`ro_data.bin`** | 15.1 MB | `486338a0f2c8e8cf773677be4201cf625f18859ee2ec46ec400cbff94c76acb0` |
+| **`ROZ_Overlay.exe`** | 12.7 MB | `381c6c8988e0cb54a8e4c315fe502ce12dfef98551e1fd9b0fc5acac666e178b` |
+| **`ro_data.bin`** | 15.0 MB | `a1cdb08c3f1a984e9c1d746959618581faaf9570caf4ffb803a100666afe75ce` |
 
 ### 🔒 Zero-Injection Architecture
 * ❌ **No DLL Injection**
