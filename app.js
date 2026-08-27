@@ -21,6 +21,8 @@ let failedPolls = 0;
 let prevHp = null;
 let prevBaseLv = null;
 let mapCache = {};
+// Maps whose image is being fetched right now - see drawMap.
+let mapPending = {};
 
 const n = v => v == null ? '-' : Math.abs(v) >= 1e9 ? (v/1e9).toFixed(2)+'B' : Math.abs(v) >= 1e6 ? (v/1e6).toFixed(2)+'M' : Math.abs(v) >= 1e4 ? (v/1e3).toFixed(1)+'k' : Math.round(v).toLocaleString();
 const dur = s => {
@@ -40,14 +42,40 @@ function getRoom() {
   return (localStorage.getItem('roz_room') || '').toUpperCase();
 }
 
+// The PIN travels in the URL *fragment* (#pin=...), which browsers never put
+// on the wire: it stays out of the tunnel provider's access logs and out of
+// the Referer header of every request this page makes afterwards. A `?pin=`
+// query is still read so links made by an older overlay keep working, and
+// either way it is moved into localStorage and scrubbed from the address bar
+// so it does not sit in the phone's history or get shared with a screenshot.
 function getPin() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const p = urlParams.get('pin') || urlParams.get('p');
+  const fromUrl = () => {
+    const hash = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+    const q = new URLSearchParams(window.location.search);
+    return hash.get('pin') || hash.get('p') || q.get('pin') || q.get('p');
+  };
+  const p = fromUrl();
   if (p) {
     localStorage.setItem('roz_pin', p.toUpperCase());
+    try {
+      const q = new URLSearchParams(window.location.search);
+      q.delete('pin'); q.delete('p');
+      const qs = q.toString();
+      history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+    } catch (e) { /* older browser: the value is stored either way */ }
     return p.toUpperCase();
   }
   return (localStorage.getItem('roz_pin') || '').toUpperCase();
+}
+
+// Every call to the overlay goes through here. The PIN is sent as a bearer
+// token and never as a query parameter - see getPin above for why.
+function apiFetch(url, opts) {
+  const pin = getPin();
+  const o = Object.assign({}, opts || {});
+  o.headers = Object.assign({}, o.headers || {});
+  if (pin) o.headers['Authorization'] = 'Bearer ' + pin;
+  return fetch(url, o);
 }
 
 function getStreamParam() {
@@ -63,17 +91,22 @@ function getStreamParam() {
 function submitPairing() {
   const room = $('pairRoomInput').value.trim().toUpperCase();
   const pin = $('pairPinInput').value.trim().toUpperCase();
-  if (room) {
-    localStorage.setItem('roz_room', room);
-    if (pin) localStorage.setItem('roz_pin', pin);
-    $('pairModal').classList.remove('show');
-    authBlocked = false;
-    lastInventory = null;
-    lastInventoryKey = null;
-    lastMap = null;
-    lastMapKey = null;
-    resolveAndConnect();
-  }
+  // A room code is how a phone finds a PC across the internet. When this page
+  // was served by the overlay itself there is no PC to find - it is the origin
+  // this file came from - and the PIN alone is the whole of what is missing.
+  // Requiring a room here made Connect a silent no-op on the overlay's own
+  // address: the dialog stayed up with the correct PIN typed into it and no
+  // way to get past it, which reads as "the PIN does not work".
+  if (!room && !(pin && selfHosted())) return;
+  if (room) localStorage.setItem('roz_room', room);
+  if (pin) localStorage.setItem('roz_pin', pin);
+  $('pairModal').classList.remove('show');
+  authBlocked = false;
+  lastInventory = null;
+  lastInventoryKey = null;
+  lastMap = null;
+  lastMapKey = null;
+  resolveAndConnect();
 }
 
 function rePair() {
@@ -110,10 +143,8 @@ async function resolveAndConnect() {
   if (selfHosted() && !selfProbing) {
     selfProbing = true;
     try {
-      const pin = getPin();
-      const res = await fetch(`/status.json?t=${Date.now()}&lean=1` +
-                              `${pin ? '&pin=' + encodeURIComponent(pin) : ''}`,
-                              { signal: AbortSignal.timeout(2500) });
+      const res = await apiFetch(`/status.json?t=${Date.now()}&lean=1`,
+                                { signal: AbortSignal.timeout(2500) });
       if (res.ok) {
         activeStreamUrl = window.location.origin;
         authBlocked = false;
@@ -153,14 +184,12 @@ async function resolveAndConnect() {
   $('charLoc').textContent = 'finding PC…';
 
   try {
-    const pin = getPin();
-
     // Tier 1: Direct stream parameter if provided
     const directStream = getStreamParam();
     if (directStream) {
       try {
         const candidate = directStream.replace(/[/]+$/, '');
-        const testRes = await fetch(`${candidate}/status.json?t=${Date.now()}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`, { signal: AbortSignal.timeout(3000) });
+        const testRes = await apiFetch(`${candidate}/status.json?t=${Date.now()}`, { signal: AbortSignal.timeout(3000) });
         if (testRes.ok || testRes.status === 401 || testRes.status === 403) {
           activeStreamUrl = candidate;
           $('cfgStreamUrl').textContent = activeStreamUrl;
@@ -174,7 +203,7 @@ async function resolveAndConnect() {
 
     // Tier 2: Local loopback (instant on PC desktop browser)
     try {
-      const localRes = await fetch(`http://127.0.0.1:8777/status.json?t=${Date.now()}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`, { signal: AbortSignal.timeout(1200) });
+      const localRes = await apiFetch(`http://127.0.0.1:8777/status.json?t=${Date.now()}`, { signal: AbortSignal.timeout(1200) });
       if (localRes.ok || localRes.status === 401 || localRes.status === 403) {
         activeStreamUrl = 'http://127.0.0.1:8777';
         $('cfgStreamUrl').textContent = activeStreamUrl;
@@ -203,12 +232,15 @@ async function resolveAndConnect() {
                 if (data.url) {
                   const candidateUrl = data.url.replace(/[/]+$/, '');
                   try {
-                    const candidatePin = pin || data.pin;
-                    const testRes = await fetch(`${candidateUrl}/status.json?t=${Date.now()}${candidatePin ? '&pin=' + encodeURIComponent(candidatePin) : ''}`, { signal: AbortSignal.timeout(3500) });
+                    // The relay answers with a location and nothing else. It
+                    // used to carry the PIN as well, which meant anyone who
+                    // could read the topic got the address and the credential
+                    // together - so the PIN guarded nothing. The one the user
+                    // typed is the only one we will ever send.
+                    const testRes = await apiFetch(`${candidateUrl}/status.json?t=${Date.now()}`, { signal: AbortSignal.timeout(3500) });
                     if (testRes.ok || testRes.status === 401 || testRes.status === 403) {
                       activeStreamUrl = candidateUrl;
                       localStorage.setItem('roz_stream_url', candidateUrl);
-                      if (data.pin && !getPin()) localStorage.setItem('roz_pin', data.pin);
                       $('cfgStreamUrl').textContent = activeStreamUrl;
                       $('charLoc').textContent = 'connected!';
                       $('liveDot').classList.remove('off');
@@ -273,10 +305,9 @@ let historyIndexData = { dates: [] };
 let currentHistoryData = null;
 
 async function loadHistory() {
-  const pin = getPin();
   const url = activeStreamUrl || window.location.origin;
   try {
-    const res = await fetch(`${url}/api/history${pin ? '?pin=' + encodeURIComponent(pin) : ''}`);
+    const res = await apiFetch(`${url}/api/history`);
     if (res.ok) {
       historyIndexData = await res.json();
       renderHistoryDatePills();
@@ -384,7 +415,7 @@ async function selectHistoryDate(dateStr) {
 
   try {
     const charParam = selectedHistoryChar !== 'all' ? `&char=${encodeURIComponent(selectedHistoryChar)}` : '';
-    const res = await fetch(`${url}/api/history?date=${encodeURIComponent(dateStr)}${charParam}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`);
+    const res = await apiFetch(`${url}/api/history?date=${encodeURIComponent(dateStr)}${charParam}`);
     if (res.ok) {
       const data = await res.json();
       currentHistoryData = data;
@@ -614,14 +645,27 @@ function drawMap(loc, actors = []) {
     return;
   }
 
-  // Draw cached PNG or request
-  const pin = getPin();
-  const imgUrl = (activeStreamUrl || '') + `/map.png?m=${encodeURIComponent(mapName)}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`;
+  // Draw the cached PNG, or go and get it. An <img src> cannot carry an
+  // Authorization header, so the image is fetched like every other endpoint
+  // and handed to the Image as an object URL. `pending` keeps a slow fetch
+  // from being started again on each of the frames drawn while it is in
+  // flight.
   if (!mapCache[mapName]) {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = imgUrl;
-    img.onload = () => { mapCache[mapName] = img; drawMap(loc, currentActors); };
+    if (!mapPending[mapName]) {
+      mapPending[mapName] = true;
+      apiFetch((activeStreamUrl || '') + `/map.png?m=${encodeURIComponent(mapName)}`)
+        .then(r => r.ok ? r.blob() : Promise.reject(r.status))
+        .then(blob => new Promise((ok, no) => {
+          const img = new Image();
+          const href = URL.createObjectURL(blob);
+          img.onload = () => { URL.revokeObjectURL(href); ok(img); };
+          img.onerror = () => { URL.revokeObjectURL(href); no('decode'); };
+          img.src = href;
+        }))
+        .then(img => { mapCache[mapName] = img; drawMap(loc, currentActors); })
+        .catch(() => {})
+        .finally(() => { delete mapPending[mapName]; });
+    }
   } else {
     g.drawImage(mapCache[mapName], 0, 0, S, S);
   }
@@ -701,10 +745,8 @@ async function refreshMap() {
   if (mapFetching || !activeStreamUrl) return;
   mapFetching = true;
   try {
-    const pin = getPin();
     const clientParam = selectedClientKey ? `&client=${encodeURIComponent(selectedClientKey)}` : '';
-    const res = await fetch(`${activeStreamUrl}/map.json?t=${Date.now()}${clientParam}` +
-                            `${pin ? '&pin=' + encodeURIComponent(pin) : ''}`);
+    const res = await apiFetch(`${activeStreamUrl}/map.json?t=${Date.now()}${clientParam}`);
     if (res.ok) {
       lastMap = await res.json();
       lastMapKey = key;
@@ -725,10 +767,8 @@ async function refreshInventory(force) {
   if (!activeStreamUrl) return;
   inventoryFetching = true;
   try {
-    const pin = getPin();
     const clientParam = selectedClientKey ? `&client=${encodeURIComponent(selectedClientKey)}` : '';
-    const res = await fetch(`${activeStreamUrl}/inventory.json?t=${Date.now()}${clientParam}` +
-                            `${pin ? '&pin=' + encodeURIComponent(pin) : ''}`);
+    const res = await apiFetch(`${activeStreamUrl}/inventory.json?t=${Date.now()}${clientParam}`);
     if (res.ok) {
       lastInventory = await res.json();
       lastInventoryKey = key;
@@ -754,24 +794,22 @@ const LOC_L_HAND  = 0x000020;
 const LOC_AMMO    = 0x008000;
 
 function classifyItem(itemType, itid, name, location) {
-  const n = (name || '').toLowerCase();
   const loc = Number(location) || 0;
 
-  // Costume first, and by location before name: an armour worn in a costume
-  // slot IS a costume however it is named, and plenty of them carry no
-  // "[Costume]" tag at all.
-  if (loc & LOC_COSTUME) return 'costume';
-  if (loc & LOC_SHADOW) return 'costume';
-  if (n.includes('[costume]') || n.startsWith('costume ') ||
-      (itid >= 400000 && itid <= 499999) || (itid >= 310000 && itid <= 319999)) {
-    return 'costume';
-  }
+  // Costume first, and from the equip location alone. Item ids are not handed
+  // out in tidy blocks - 450347 and 460058 are plain armours sitting inside
+  // the old "400000-499999 is a costume" range - and names are no better,
+  // since plenty of costumes carry no "[Costume]" tag. The slot the client
+  // says the item goes in is the only thing that actually decides it.
+  if (loc & (LOC_COSTUME | LOC_SHADOW)) return 'costume';
 
   // Then by where it is worn, which beats the type byte because it is
   // unambiguous: a two-hander occupies both hands and is still a weapon.
   if (loc & (LOC_R_HAND | LOC_L_HAND)) return 'weapon';
   if (loc && !(loc & LOC_AMMO)) return 'armor';
 
+  // No equip location at all: not equipment, so the type byte is all there is
+  // and nothing here can be a costume.
   switch (Number(itemType)) {
     case 0:
     case 2:
@@ -784,10 +822,6 @@ function classifyItem(itemType, itid, name, location) {
       return 'weapon';
     case 6:
       return 'card';
-    case 8:
-    case 11:
-    case 12:
-      return 'costume';
     default:
       return 'etc';
   }
@@ -1066,15 +1100,14 @@ async function tick() {
     return;
   }
 
-  const pin = getPin();
   try {
     const clientParam = selectedClientKey ? `&client=${encodeURIComponent(selectedClientKey)}` : '';
     // lean=1 says this page fetches containers from /inventory.json and
     // the walked trail from /map.json, so the overlay can leave both out
     // of a payload it re-sends every second. Without the flag it sends
     // them inline, which is what keeps an older deployed portal working.
-    const url = `${activeStreamUrl}/status.json?t=${Date.now()}&lean=1${clientParam}${pin ? '&pin=' + encodeURIComponent(pin) : ''}`;
-    const res = await fetch(url);
+    const url = `${activeStreamUrl}/status.json?t=${Date.now()}&lean=1${clientParam}`;
+    const res = await apiFetch(url);
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) {
         $('charLoc').textContent = 'PIN required';

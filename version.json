@@ -1,12 +1,12 @@
 {
-  "version": "1.5.0",
-  "data_version": "2026.08.26",
-  "release_date": "2026-08-26",
-  "changelog": "Storage equipment files to the right container, costumes detected by equip slot, loot told apart from purchases, PIN changes reach the running server, same-origin pairing on the PC, and 90% smaller telemetry and daily history",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.5.0/ROZ_Overlay.exe",
-  "exe_size": 13314760,
-  "exe_sha256": "381c6c8988e0cb54a8e4c315fe502ce12dfef98551e1fd9b0fc5acac666e178b",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.5.0/ro_data.bin",
+  "version": "1.6.0",
+  "data_version": "2026.08.27",
+  "release_date": "2026-08-27",
+  "changelog": "Phone access is now opt-in and the pairing PIN is never broadcast. The dashboard authenticates with a bearer token and now ships inside the exe. Item containers moved to their own store, with Kafra storage correctly shared across an account. Lower memory use and far less disk writing.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.6.0/ROZ_Overlay.exe",
+  "exe_size": 14300760,
+  "exe_sha256": "75ae4cfeaf1d2c84c9bc8e2d3c49d78da5a10fde26a285f285eb61380c2be29e",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.6.0/ro_data.bin",
   "data_size": 15753842,
-  "data_sha256": "a1cdb08c3f1a984e9c1d746959618581faaf9570caf4ffb803a100666afe75ce"
+  "data_sha256": "f21d3fc68f5ee5ae87930e93561e2105e0aca80eaa913b8292b87ced216942d1"
 }
