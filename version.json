@@ -1,12 +1,12 @@
 {
-  "version": "1.6.0",
+  "version": "1.6.1",
   "data_version": "2026.08.27",
   "release_date": "2026-08-27",
-  "changelog": "Phone access is now opt-in and the pairing PIN is never broadcast. The dashboard authenticates with a bearer token and now ships inside the exe. Item containers moved to their own store, with Kafra storage correctly shared across an account. Lower memory use and far less disk writing.",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.6.0/ROZ_Overlay.exe",
-  "exe_size": 14300760,
-  "exe_sha256": "75ae4cfeaf1d2c84c9bc8e2d3c49d78da5a10fde26a285f285eb61380c2be29e",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.6.0/ro_data.bin",
+  "changelog": "* **Weight alerts.** Set the percentage you want to hear about (default 70%). You are told once when the weight crosses your mark, and once more at 90% where the character can no longer attack or pick anything up - and nothing in between, so farming past your own line does not repeat itself. A line re-arms only after the weight really comes down.\n* **Send All (Preview).** A button in the alerts dialog that sends a sample of every alert type - low HP, death, level ups, whispers, card / gear / costume drops, both weight stages and a stalled stream - with placeholder names, so you can see how each one looks before it matters. They come from the same code the live alerts use.\n* Release notes now carry their own summary instead of pointing at a file that was never published.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.6.1/ROZ_Overlay.exe",
+  "exe_size": 14305984,
+  "exe_sha256": "7e88ffe3a76b3da5e23e8b16d965b0bd2bfa9cda77a8343c5b594df0ec1421a9",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.6.1/ro_data.bin",
   "data_size": 15753842,
   "data_sha256": "f21d3fc68f5ee5ae87930e93561e2105e0aca80eaa913b8292b87ced216942d1"
 }
