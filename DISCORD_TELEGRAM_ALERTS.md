@@ -118,6 +118,22 @@ These are not mock-ups written to look like the real thing. Each one is produced
 
 It is paced over several seconds on purpose, so the messages arrive in a readable order and do not trip Discord's rate limit.
 
+### What arrives
+
+These are real embeds from a live `Send All (Preview)` run — eleven of the twelve, in the order they landed. Placeholder names throughout: there is no `TestPlayer`.
+
+<div align="center">
+  <img src="screenshots/alerts_discord_1.png" width="330" alt="Discord: the connection test, a low HP warning, a base level up, a job level up and the first overweight line" />
+  <img src="screenshots/alerts_discord_2.png" width="440" alt="Discord: a card drop, a gear drop listing its two random options by name, a costume drop and a whisper" />
+</div>
+
+<div align="center">
+  <img src="screenshots/alerts_discord_3.png" width="440" alt="Discord: a death alert and the critical weight alert at 90 percent" />
+</div>
+
+Each colour is the kind of event — gold for a card, blue for gear, purple for a costume, orange for a warning, red for something that has already gone wrong. The gear alert lists the random options **by name**, not as index numbers.
+
+
 ---
 
 ## ⚙️ Settings
