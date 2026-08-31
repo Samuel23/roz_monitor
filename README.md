@@ -50,6 +50,12 @@
         <img src="screenshots/dash_history.png" width="440" alt="History: daily EXP and zeny totals, monster kill breakdown, loot ledger and the saved chat log" />
       </td>
     </tr>
+    <tr>
+      <td align="center" colspan="2" valign="top">
+        <b>🖥️ Desktop overlay — the companion window on your PC</b><br>
+        <img src="screenshots/overlay_session.png" width="380" alt="Desktop overlay: EXP per hour, time to level, zeny, weight and session activity in a compact always-available window" />
+      </td>
+    </tr>
   </table>
 </div>
 
