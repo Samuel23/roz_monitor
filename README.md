@@ -159,9 +159,10 @@ powershell -ExecutionPolicy Bypass -File verify_download.ps1
 
 Compare what it prints against the table above. **If either hash differs, delete
 the files and download again — do not run them.** A build being flagged by an
-antivirus is also not unusual for this kind of tool: it is a packed Python
-executable that opens a packet-capture device, which is a combination heuristics
-dislike. The checksum is how you tell a false positive from a real one.
+antivirus is possible for this kind of tool — it is a packed Python executable
+that opens a packet-capture device, a combination some heuristics dislike —
+though Windows Defender passes the current build cleanly. The checksum is how
+you tell a false positive from a real one.
 
 ### 🔄 Updates are signed
 
@@ -334,10 +335,11 @@ tip jar, it is genuinely appreciated:
   </a>
 </div>
 
-The first thing it would go toward is a **code-signing certificate**. That is the
-few-hundred-dollars-a-year thing standing between you and the "unknown publisher"
-warning on every download — see [above](#-windows-will-say-unknown-publisher--here-is-why-and-what-to-do).
-After that it is simply time: more features, and keeping up with the client.
+It goes toward development — the time to build new features, fix what breaks, and
+keep up with the game client as it is patched. If it ever adds up to more than
+that, the next thing on the list is a [code-signing
+certificate](#-windows-will-say-unknown-publisher--here-is-why-and-what-to-do),
+which would retire the "unknown publisher" warning on new downloads.
 
 No obligations in either direction. A tip buys no priority and no promises, and
 not tipping costs you nothing — you get the same build either way.
