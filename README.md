@@ -97,11 +97,11 @@ The current answer is already on your disk, because the client that was just pat
 
 ### What it reads
 
-It finds your installation on its own — from the processes it is already capturing, or from where it found the client last time, which is what lets it work while the game is closed. On this machine that is `C:\Gravity\RagnarokZero`. If it guesses wrong, **Setup → Game Data** lets you point at the folder yourself.
+It finds your installation on its own — from the processes it is already capturing, or from where it found the client last time, which is what lets it work while the game is closed. A default install sits at something like `C:\Gravity\RagnarokZero`. If it guesses wrong, **Setup → Game Data** lets you point at the folder yourself.
 
 Out of the client's own data files come eight tables:
 
-| Table | Entries here | What it fixes |
+| Table | Typical entries | What it fixes |
 |---|---:|---|
 | Item names | 3,905 | Loot, inventory and chat links read the way your tooltip does |
 | Slot counts | 388 | `Hood [1]` rather than `Hood` |
