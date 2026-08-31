@@ -81,6 +81,55 @@
   * Direct webhook & bot push notifications to your phone for Low HP (<25%), Deaths, Whispers, and Rare Drops. 👉 **[View Setup Guide](DISCORD_TELEGRAM_ALERTS.md)**
 * **🎮 Multi-Client Support**:
   * Seamlessly switch between multiple active game clients with the multi-box fleet bar.
+* **🧩 Reads Your Own Game Client**:
+  * Item names, slot counts, random-option wording, skill and status-effect text are read from the client installed on your PC — including its icons and map images.
+  * A patch that adds items is picked up on the next start, so new gear is named instead of showing up as `item#480824`. 👉 **[How this works](#-how-it-stays-correct-after-a-game-patch)**
+
+---
+
+## 🧩 How it stays correct after a game patch
+
+Almost everything the game shows you is **client-side**. When you loot something, the server sends an id and nothing else — `480824` — and your client looks the wording up in its own tables. So a companion tool needs those tables, and a tool that only ships a copy of them starts drifting the day the game is patched.
+
+That drift is not slow. Between two patches a week apart, this server added **46 items and renamed one** — and the rename (`Costume Paw Backpack` → `[Costume] Meow Jelly Backpack`) is the kind that makes a drop alert look *wrong* rather than merely incomplete.
+
+The current answer is already on your disk, because the client that was just patched is installed there. So the overlay reads it.
+
+### What it reads
+
+It finds your installation on its own — from the processes it is already capturing, or from where it found the client last time, which is what lets it work while the game is closed. On this machine that is `C:\Gravity\RagnarokZero`. If it guesses wrong, **Setup → Game Data** lets you point at the folder yourself.
+
+Out of the client's own data files come eight tables:
+
+| Table | Entries here | What it fixes |
+|---|---:|---|
+| Item names | 3,905 | Loot, inventory and chat links read the way your tooltip does |
+| Slot counts | 388 | `Hood [1]` rather than `Hood` |
+| Random options | 252 | `Variable Casting Time -10%` rather than `Opt #170: +10` |
+| Skill names | 1,053 | The skill list, with icons |
+| Status effects | 965 | Buff names and their tooltips |
+| Monster names | 1,400 | Kill counts and drop alerts |
+| Job names | 2,691 | Class labels on nearby players |
+| Interface text | 13,980 | The client's own wording for shared strings |
+
+Plus the pictures: **415 status icons**, **901 skill icons** and the map images behind the live radar, extracted to your profile the first time they are needed. None of them are redistributed — they come off your own installation.
+
+### It re-reads only when the game changes
+
+Reading the client on every start would be wasted work. Instead the overlay keeps a fingerprint of the files a patch would have to touch, and compares it: same fingerprint, use the cache; changed, read again. A patcher cannot avoid changing them, so **a patch is what triggers the work, and nothing else does**.
+
+### Which source wins
+
+The client's tables are merged **over** the ones that ship with the release, never in place of them — and which one wins is decided per table, by looking at what the merge actually produced:
+
+* **The client wins for items, options, skills and status effects.** Its string *is* the text you are reading on your own screen.
+* **The client may only add for monsters and jobs.** All it has for those is the sprite table, and a sprite table is not a display-name table: it calls Swordsman "Swordman", Priest "Prieset", Wizard "Wizerd", and turns Super Novice into Korean. It would have overwritten 193 curated names with worse ones. What it does contribute is the ids nobody has named yet — **865 of them** — which is real, and is all it is allowed to do there.
+
+Reading your client is also the only source that is right by construction: a server can patch in items no public database has ever heard of, and this still names them.
+
+### If it cannot
+
+Every failure means *carry on with the tables that shipped* — a game that is not installed on this PC, a client caught mid-patch with a half-written file, an unreadable cache. The overlay never breaks because it could not read the client; it just stops improving on what it already knew.
 
 ---
 
@@ -136,7 +185,7 @@ replaying a capture all still work; only live tracking stops.
 ### 🔒 Zero-Injection Architecture
 * ❌ **No DLL Injection**
 * ❌ **No Memory Reading / Writing**
-* ❌ **No Client File Modification**
+* ❌ **No Client File Modification** — the game’s data files are opened read-only, to read the names it already shows you, and nothing is written back
 * ❌ **Nothing is ever sent to the game server** — the capture socket is receive-only
 * ✅ **100% Passive Telemetry**
 * 🔐 **PIN-protected dashboard** — served to `127.0.0.1` unless you switch phone access on, and the PIN is never put in a URL or in the pairing announcement
