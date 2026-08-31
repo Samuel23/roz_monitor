@@ -121,11 +121,140 @@ nav.bottom-nav {
   overflow-y: auto;
   padding-right: 4px;
 }
-.buff-pill {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: var(--bar); padding: 4px 8px; border-radius: 12px;
-  font-size: 11px; margin: 2px;
+
+/* The character sheet, arranged the way the game's status window is: the six
+   primaries stacked down the left, the paired combat stats beside them two to
+   a row - Atk/Def, Matk/Mdef, Hit/Flee, Critical/Aspd. On a phone the two
+   panels stack instead of sitting side by side. */
+.sheet-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 560px) {
+  .sheet-grid { grid-template-columns: 0.85fr 1.15fr; }
 }
+.sheet-primary { display: grid; grid-template-columns: 1fr; gap: 3px; }
+.sheet-combat {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px;
+  align-content: start;
+}
+.stat-line {
+  display: flex; align-items: baseline; gap: 6px; min-width: 0;
+  background: var(--bar); border-radius: 5px; padding: 4px 8px;
+}
+.stat-line .k {
+  flex: 0 0 auto; min-width: 30px;
+  font-size: 10px; color: var(--dim); letter-spacing: .3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.stat-line .v {
+  flex: 1 1 auto; text-align: right;
+  font-size: 14px; font-weight: 700; color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+/* What the gear added, kept in its own colour - the base is what status
+   points bought and the bonus is what can be taken off again. */
+.stat-line .b {
+  flex: 0 0 auto; min-width: 26px; text-align: right;
+  font-size: 12px; font-weight: 700; color: var(--acc);
+  font-variant-numeric: tabular-nums;
+}
+/* What the next point of that stat costs, where the game puts its raise
+   arrow. Dim on purpose: it is a number you consult, not one you watch. */
+.stat-line .need {
+  flex: 0 0 auto; min-width: 18px; text-align: right;
+  font-size: 9px; color: #50576a; font-variant-numeric: tabular-nums;
+}
+.sheet-points {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid #1f2433;
+  display: flex; gap: 16px; font-size: 11px; color: var(--dim);
+}
+.sheet-points b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+.skill-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 4px; border-bottom: 1px solid #1a1e29;
+}
+.skill-row:last-child { border-bottom: none; }
+/* The client's own 24x24 icon. It is hidden rather than removed when the
+   archive has no file for that skill, so the names below it stay in line. */
+.skill-icon {
+  flex: 0 0 24px; width: 24px; height: 24px;
+  image-rendering: pixelated; border-radius: 3px;
+}
+.skill-name { flex: 1 1 auto; font-size: 12px; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.skill-meta { flex: 0 0 auto; font-size: 10px; color: var(--dim); }
+.skill-lv {
+  flex: 0 0 auto; min-width: 42px; text-align: right;
+  font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums;
+}
+.skill-lv b { font-size: 13px; color: var(--fg); }
+/* A skill with nothing left to spend on it, in the colour everything else
+   that is finished uses. */
+.skill-row.maxed .skill-lv b { color: var(--gold); }
+/* Active statuses. One tile per effect: the client's own icon, a wedge that
+   sweeps clockwise over it as the effect runs out, and the time left
+   underneath. */
+.buff-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.buff-tile {
+  width: 44px; display: flex; flex-direction: column; align-items: center;
+  cursor: default; outline: none;
+}
+.buff-tile:focus .buff-art { border-color: var(--acc); }
+.buff-art {
+  position: relative; width: 36px; height: 36px; overflow: hidden;
+  border-radius: 6px; background: var(--bar); border: 1px solid #262b3a;
+  display: flex; align-items: center; justify-content: center;
+}
+.buff-abbr { font-size: 12px; font-weight: 700; color: var(--acc); letter-spacing: -0.5px; }
+.buff-img {
+  position: absolute; left: 1px; top: 1px; width: 32px; height: 32px;
+  image-rendering: pixelated;
+}
+/* The wipe the game draws over a running status icon: a wedge sweeping
+   clockwise from twelve o'clock, growing until it covers the whole icon as the
+   effect runs out. White while there is more than a minute left, orange once
+   there is not, which is the game's own warning and reads at a glance from
+   across the row without anybody counting digits.
+
+   --buff-drain-p is registered so it can be interpolated: a custom property is
+   a string to the animation engine unless @property gives it a type, and an
+   un-typed one steps once a second instead of sweeping. Browsers without
+   @property still get the wedge, just in one-second jumps. */
+@property --buff-drain-p {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+.buff-drain {
+  position: absolute; inset: 0; pointer-events: none;
+  --buff-drain-p: 0%;
+  --buff-drain-tint: rgba(255, 255, 255, 0.5);
+  background: conic-gradient(from 0deg,
+              var(--buff-drain-tint) var(--buff-drain-p), transparent 0);
+  transition: --buff-drain-p 1s linear;
+}
+.buff-drain.low { --buff-drain-tint: rgba(255, 150, 45, 0.62); }
+.buff-left {
+  font-size: 10px; margin-top: 2px; color: var(--dim);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.buff-left.soon { color: var(--warn); font-weight: 700; }
+/* The tooltip is one element on the body, placed by showBuffTip. Hover for a
+   mouse, focus for a keyboard, tap for a phone - which is most of the traffic
+   this page gets, and has no hover at all. */
+.buff-tip {
+  position: fixed; display: none; max-width: 240px; z-index: 400;
+  padding: 7px 9px; border-radius: 7px;
+  background: #10131c; border: 1px solid #262b3a; color: var(--fg);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  font-size: 11px; line-height: 1.45; text-align: left;
+  pointer-events: none;
+}
+.buff-tip b { color: var(--acc); }
+.buff-tile:hover .buff-tip, .buff-tile:focus .buff-tip, .buff-tile.open .buff-tip {
+  opacity: 1; visibility: visible;
+}
+/* A tile near the right edge would push its tooltip off screen. */
+.buff-tile:nth-child(6n) .buff-tip { left: auto; right: 0; transform: none; }
 table.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
 table.tbl td { padding: 5px 0; border-bottom: 1px solid #1b1f2b; }
 table.tbl td:last-child { text-align: right; font-weight: 700; }
@@ -196,6 +325,45 @@ table.tbl td:last-child { text-align: right; font-weight: 700; }
 .fleet-item.active {
   border-color: var(--acc); background: rgba(27, 31, 43, 0.8);
 }
+/* The party, under the minimap it is drawn on. A pip in the same colour as
+   the member's dot, so the row and the map agree at a glance. */
+.map-controls { display:flex; align-items:center; gap:8px; margin-top:8px; }
+.party-row { display:flex; align-items:center; gap:8px; padding:5px 2px;
+             border-bottom:1px solid #1a1e29; }
+.party-row:last-child { border-bottom:0; }
+.party-row.me .party-name { color: var(--gold); }
+.party-pip { width:9px; height:9px; border-radius:50%; flex:0 0 9px; }
+.party-who { flex:1 1 auto; min-width:0; }
+.party-name { font-size:12px; font-weight:600; white-space:nowrap;
+              overflow:hidden; text-overflow:ellipsis; }
+.party-meta { font-size:10px; color:var(--dim); }
+.party-bar { width:64px; height:5px; border-radius:3px; background:#1f2433;
+             overflow:hidden; flex:0 0 64px; }
+.party-bar i { display:block; height:100%; }
+.party-pct { font-size:11px; color:var(--dim); width:34px; text-align:right; }
+
+/* Chat channel filters, matching the overlay's own tabs. */
+.chat-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 8px; }
+.chat-tabs .pill-btn { flex: 1 1 auto; font-size: 10px; padding: 3px 6px; }
+
+/* An item link inside a message, drawn the way an inventory row is drawn. */
+.chat-item { display: inline-flex; align-items: center; gap: 4px;
+             flex-wrap: wrap; vertical-align: middle;
+             background: rgba(255, 212, 121, 0.08);
+             border: 1px solid rgba(255, 212, 121, 0.25);
+             border-radius: 5px; padding: 1px 5px; margin: 1px 0; }
+.chat-item .item-icon { width: 18px; height: 18px; }
+.chat-item .opt-chip { font-size: 9px; padding: 0 3px; }
+
+/* A rare-drop announcement is yellow the way the game paints it; a player's
+   shout stays white and only the item link inside it is tinted. */
+.msg-drop { color: var(--gold); font-weight: 600; }
+/* The archived log is read as a log, so every line carries its clock. */
+.msg-time { color: var(--dim); font-size: 10px; font-variant-numeric: tabular-nums; }
+#histChatBox { max-height: 420px; }
+.msg-drop-row { color: var(--gold); }
+.msg-link { color: var(--gold); font-weight: 600; }
+
 .legal-footer {
   text-align: center;
   padding: 16px 8px 14px 8px;

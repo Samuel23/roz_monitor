@@ -59,15 +59,63 @@ Official release binary integrity and SHA-256 verification:
 
 | File | Size | SHA-256 Checksum |
 |:---|:---|:---|
-| **`ROZ_Overlay.exe`** | 13.6 MB | `7e88ffe3a76b3da5e23e8b16d965b0bd2bfa9cda77a8343c5b594df0ec1421a9` |
-| **`ro_data.bin`** | 15.0 MB | `f21d3fc68f5ee5ae87930e93561e2105e0aca80eaa913b8292b87ced216942d1` |
+| **`ROZ_Overlay.exe`** | 12.9 MB | `22c5531d07dc0906d46915166a0e629e74d0653a545124e0069e9e4e0af39e7a` |
+| **`ro_data.bin`** | 15.6 MB | `615abda817e8abd43efc056bcb47a253ca538a669c1f938bfb07a0291428935b` |
+
+### ⚠️ Windows will say "unknown publisher" — here is why, and what to do
+
+The build is signed, but with a **self-signed certificate**: it proves the file
+has not been altered since it was built, but nothing vouches for *who* built it,
+so SmartScreen shows the unknown-publisher warning. A commercial certificate
+costs a few hundred dollars a year and still has to accumulate reputation before
+the warning goes away.
+
+The checksum is what actually verifies your download. `verify_download.ps1` is
+included in the release zip — run it in the folder you downloaded into:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File verify_download.ps1
+```
+
+Compare what it prints against the table above. **If either hash differs, delete
+the files and download again — do not run them.** A build being flagged by an
+antivirus is also not unusual for this kind of tool: it is a packed Python
+executable that opens a packet-capture device, which is a combination heuristics
+dislike. The checksum is how you tell a false positive from a real one.
+
+### 🔄 Updates are signed
+
+The overlay checks for updates itself and applies them in place. The update
+manifest carries an **Ed25519 signature**, which the app verifies before it reads
+anything out of it — so an update can only come from whoever holds the release
+key, not merely from someone who can put a file on the download host. Each
+downloaded file is then checked against its SHA-256 before it is installed, and
+if an install cannot be completed the previous version is put back rather than
+left half-replaced.
+
+### 🔑 Administrator
+
+The overlay does **not** ask for Administrator when it starts. It tries to read
+the connection first, and only if every method is refused does it tell you so and
+offer a **Restart as Administrator** button in the Setup tab. On a PC with Npcap
+installed without its "restrict to Administrators" option, it never needs to ask
+at all. Declining is survivable either way — saved history, the dashboard and
+replaying a capture all still work; only live tracking stops.
 
 ### 🔒 Zero-Injection Architecture
 * ❌ **No DLL Injection**
 * ❌ **No Memory Reading / Writing**
 * ❌ **No Client File Modification**
-* ✅ **100% In-Memory Passive Telemetry**
-* 🔐 **End-to-End WebSocket Encryption** via Room Code & PIN
+* ❌ **Nothing is ever sent to the game server** — the capture socket is receive-only
+* ✅ **100% Passive Telemetry**
+* 🔐 **PIN-protected dashboard** — served to `127.0.0.1` unless you switch phone access on, and the PIN is never put in a URL or in the pairing announcement
+
+> [!NOTE]
+> When phone access is on, the connection runs over HTTPS through a public
+> tunnel provider so your phone can reach your PC. That provider relays the
+> traffic and can see it, exactly as with any hosted page — so it is protected
+> by your PIN, not by end-to-end encryption. Leave phone access off if that
+> matters to you; everything on the PC works without it.
 
 ---
 
@@ -87,7 +135,7 @@ Official release binary integrity and SHA-256 verification:
 | Component | Description | Size |
 |---|---|---|
 | **`ROZ_Overlay.exe`** | Fast native Windows companion launcher (No Wireshark or Npcap required) | ~12 MB |
-| **`ro_data.bin`** | Encrypted game schemas, item/mob database, and 400+ minimap PNG textures | ~15 MB |
+| **`ro_data.bin`** | Game schemas, item/mob database, and 400+ minimap PNG textures | ~15 MB |
 | **`ROZ_Overlay_vX.X.X.zip`** | Complete release distribution package containing both files | ~27 MB |
 
 👉 **[Download Latest Release](https://github.com/Samuel23/roz_monitor/releases)**
@@ -125,9 +173,10 @@ All companion telemetry is saved strictly on your local PC in your user profile:
 ```
 
 #### What files are stored locally?
-* `state.json`: Window coordinates, UI tab selection, sound volume, and character profile preferences.
+* `state.json`: Window position, UI preferences, and character profiles. It also holds your dashboard PIN, the pairing sync key, and any Discord webhook or Telegram token you set up — **those four are encrypted with Windows DPAPI**, so they are tied to your Windows account and are unreadable if the file is copied to another PC or picked up out of a backup.
 * `status.json` / `inventory.json` / `chat.json`: Temporary local telemetry snapshots used to power the desktop overlay and web dashboard.
 * `history/YYYY-MM-DD/<Character>/summary.json`: Daily farming summaries for reviewing personal EXP/hr rates, total zeny earnings, and monster drops.
+* `history/YYYY-MM-DD/<Character>/chat.jsonl` and `shouts.jsonl`: **The day's chat log, kept for 30 days.** See the note below.
 
 #### Sample of recorded data (`history/.../summary.json`):
 ```json
@@ -153,14 +202,19 @@ All companion telemetry is saved strictly on your local PC in your user profile:
 > [!NOTE]
 > **No Sensitive Data Stored:** Passwords, account credentials, master logins, and private authentication tokens are never parsed or written to disk.
 
+> [!IMPORTANT]
+> **About chat.** The game server sends your client every public message, shout and whisper you can see — that is simply how the game works — so this tool reads them too, and saves the day's chat on your PC so the log survives a restart. It is deleted automatically after 30 days, and **Settings → Clear Saved Chat** removes all of it now. Nothing chat-related leaves your PC unless you turn on phone access or alerts (below).
+
 ---
 
 ### 🔐 3. Privacy & Account Credentials Guarantee
 > **"How can I be 100% sure my login details, passwords, or PIN codes are never captured?"**
 
-* **Architecture Guarantee**: The companion tool completely ignores login and character authentication authentication servers. It passively listens only to active in-game world events once you are playing inside the game.
+* **Architecture Guarantee**: The companion tool completely ignores login and character authentication servers. It passively listens only to active in-game world events once you are playing inside the game.
 * **Zero-Risk Verification Method**: If you want absolute peace of mind, **launch `ROZ_Overlay.exe` only AFTER you have already logged in and entered the game world.**
-* **Local In-Memory Privacy**: All calculations (EXP/h, loot counts, radar tracking) are computed entirely in volatile RAM on your local PC. Nothing is ever transmitted to external servers.
+* **Local by default**: All calculations (EXP/h, loot counts, radar tracking) are computed on your own PC, and the dashboard is served to `127.0.0.1` only. Two optional features — and only these two — send anything outward, both off until you switch them on:
+  * **Phone access.** Turning it on opens a public HTTPS tunnel so your phone can reach the dashboard from anywhere. The tunnel provider relays the traffic, so treat it as you would any hosted page: it is protected by your PIN, and the PIN is never put in the URL or in the pairing announcement.
+  * **Discord / Telegram alerts.** If you add a webhook or bot token, the text of each alert is sent to that service — **including the text of a whisper**, if you enable whisper alerts.
 
 ---
 

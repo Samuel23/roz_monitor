@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://midgardhub.com" crossorigin>
 <link rel="dns-prefetch" href="https://midgardhub.com">
-<link rel="stylesheet" href="style.css?v=1.3.1">
+<link rel="stylesheet" href="style.css?v=1.7.0">
 </head>
 <body>
 
@@ -103,7 +103,40 @@
   </div>
   <div class="card">
     <div class="card-title">Active Buffs (<span id="buffCount">0</span>)</div>
-    <div id="buffsContainer" style="min-height: 40px; display: flex; flex-wrap: wrap;"></div>
+    <div id="buffsContainer" style="min-height: 40px;"></div>
+  </div>
+
+  <!-- The character sheet. On this tab rather than a tab of its own because
+       it is read while deciding whether a fight is going well - what the ATK
+       is, whether the FLEE is enough for this map - and because eight bottom
+       nav items on a phone is one too many. -->
+  <div class="card">
+    <div class="card-title"><span>Character Stats</span></div>
+    <!-- Two panels side by side, the way the game stacks them: the six
+         primaries down the left with what a raise costs, the paired combat
+         stats to their right. -->
+    <div class="sheet-grid">
+      <div class="sheet-primary" id="statPrimary"></div>
+      <div class="sheet-combat" id="statCombat"></div>
+    </div>
+    <div class="sheet-points" id="statPoints"></div>
+    <div id="statEmpty" style="color:var(--dim);text-align:center;padding:18px 10px;font-size:12px;">
+      No stat packet seen yet<br>
+      <span style="font-size:11px;color:#50576a;">The server sends the sheet once, at map login - change map or relog to fill this in</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span>Skills (<span id="skillCount" class="acc">0</span>)</span>
+      <div class="actor-filter-pills">
+        <button class="pill-btn active" id="pillSkillAll" onclick="setSkillFilter('all')">All</button>
+        <button class="pill-btn" id="pillSkillActive" onclick="setSkillFilter('active')">Active</button>
+        <button class="pill-btn" id="pillSkillPassive" onclick="setSkillFilter('passive')">Passive</button>
+      </div>
+    </div>
+    <input type="text" id="skillSearch" class="search-input" placeholder="&#128269; Search skills…" oninput="renderSkills()">
+    <div id="skillList" class="mob-scroll-list" style="max-height:320px;"></div>
   </div>
   <div class="legal-footer">All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.</div>
 </div>
@@ -116,6 +149,17 @@
       <div class="map-canvas-wrap">
         <canvas id="mapCanvas" width="256" height="256"></canvas>
       </div>
+      <div class="map-controls">
+        <button class="pill-btn active" id="trailBtn" onclick="toggleTrail()" title="Draw the walked path, when the overlay is recording one">Trail</button>
+        <span class="dim" style="font-size:10px;">The overlay records the path only when asked to</span>
+      </div>
+    </div>
+    <div class="card" id="partyCard" style="display:none;">
+      <div class="card-title">
+        <span id="partyName">Party</span>
+        <span class="acc"><span id="partyCount">0</span> members</span>
+      </div>
+      <div id="partyList"></div>
     </div>
     <div class="card" id="mobCard">
       <div class="card-title">
@@ -179,7 +223,22 @@
 <div id="tab-chat" class="tab-content">
   <div class="card">
     <div class="card-title">In-Game Chat / Whispers</div>
+    <div class="chat-tabs" id="chatTabs">
+      <button class="pill-btn active" onclick="setChatChannel('all')">All</button>
+      <button class="pill-btn" onclick="setChatChannel('whisper')">Whispers</button>
+      <button class="pill-btn" onclick="setChatChannel('party')">Party</button>
+      <button class="pill-btn" onclick="setChatChannel('guild')">Guild</button>
+      <button class="pill-btn" onclick="setChatChannel('broadcast')">Shouts</button>
+      <button class="pill-btn" onclick="setChatChannel('public')">Public</button>
+    </div>
     <div class="chat-box" id="chatBox"><div style="color:var(--dim);text-align:center;padding:20px;">No messages received</div></div>
+  </div>
+  <div class="card" id="dropCard" style="display:none;">
+    <div class="card-title">
+      <span>Server Drop Announcements</span>
+      <span class="acc"><span id="dropCount">0</span></span>
+    </div>
+    <div class="chat-box" id="dropBox"></div>
   </div>
   <div class="legal-footer">All character, monster, item, and map graphics &copy; <b>Gravity Co., Ltd.</b> & Lee Myoung-Jin.</div>
 </div>
@@ -257,6 +316,20 @@
       <tbody id="histLootTable"><tr><td colspan="3" style="color:var(--dim)">No loot drops recorded</td></tr></tbody>
     </table>
   </div>
+
+  <div class="card">
+    <div class="card-title"><span>Chat Log</span><span class="acc" id="histChatTotal">0 Lines</span></div>
+    <div class="chat-tabs" id="histChatTabs">
+      <button class="pill-btn active" onclick="setHistChatChannel('all')">All</button>
+      <button class="pill-btn" onclick="setHistChatChannel('whisper')">Whispers</button>
+      <button class="pill-btn" onclick="setHistChatChannel('party')">Party</button>
+      <button class="pill-btn" onclick="setHistChatChannel('guild')">Guild</button>
+      <button class="pill-btn" onclick="setHistChatChannel('broadcast')">Shouts</button>
+      <button class="pill-btn" onclick="setHistChatChannel('public')">Public</button>
+      <button class="pill-btn" onclick="setHistChatChannel('announce')">Drops</button>
+    </div>
+    <div class="chat-box" id="histChatBox"><div style="color:var(--dim);text-align:center;padding:20px;">No chat recorded</div></div>
+  </div>
 </div>
 
 <!-- BOTTOM NAVIGATION -->
@@ -287,6 +360,6 @@
   </div>
 </div>
 
-<script src="app.js?v=1.3.1" defer></script>
+<script src="app.js?v=1.7.0" defer></script>
 </body>
 </html>

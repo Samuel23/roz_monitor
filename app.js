@@ -31,6 +31,12 @@ const dur = s => {
   return d ? d+'d '+h+'h' : h ? h+'h '+String(m).padStart(2,'0')+'m' : m ? m+'m '+String(s%60).padStart(2,'0')+'s' : s+'s';
 };
 
+// Text that came off the wire - a character name, a status description - on
+// its way into innerHTML. It was being called in three places without ever
+// having been defined, which threw the moment a kill breakdown was drawn.
+const escapeHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+
 // --- Pairing Management ---
 function getRoom() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -393,6 +399,14 @@ async function selectHistoryDate(dateStr) {
 
     const lootList = (s.loot && s.loot.items) || s.loot || [];
     const lootArr = Array.isArray(lootList) ? lootList : Object.entries(lootList || {}).map(([itid, count]) => ({itid, count}));
+    // The live snapshot carries only its last hundred lines, which is a
+    // chat box and not a day. Draw those straight away so the card is never
+    // blank, then ask the archive for the whole day and take it if it has
+    // more - it is the same lines, written as they arrived.
+    setHistChatRows((lastSnapshot.messages || [])
+      .concat(lastSnapshot.announcements || []));
+    loadHistChatArchive(url, isoToday(), selectedHistoryChar);
+
     $('histLootTotal').textContent = `${(s.loot?.total || lootArr.length).toLocaleString()} Items`;
     if (lootArr.length) {
       $('histLootTable').innerHTML = lootArr.map(item => `
@@ -463,6 +477,8 @@ async function selectHistoryDate(dateStr) {
           if (c.loot_ledger) ledger = ledger.concat(c.loot_ledger);
         });
       }
+      setHistChatRows((data.chat || []).concat(data.shouts || []));
+
       $('histLootTotal').textContent = `${ledger.length} Drops`;
       if (ledger.length) {
         $('histLootTable').innerHTML = ledger.slice(-50).reverse().map(item => `
@@ -528,6 +544,255 @@ function alarmLevelUp() {
       osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.25);
     });
   } catch(e){}
+}
+
+// The chat card and the drop feed, redrawn together. Extracted from the poll
+// so a filter change can redraw without waiting for the next tick.
+function renderChat(d) {
+  const wanted = CHAT_CHANNELS[chatChannel] || null;
+  const all = d.messages || [];
+  const msgs = wanted ? all.filter(m => wanted.includes(m.channel || m.kind)) : all;
+  const box = $('chatBox');
+  if (box) {
+    box.innerHTML = msgs.length ? msgs.slice(-25).reverse().map(m => {
+      let prefix = '';
+      if (m.channel === 'broadcast' || m.kind === 'broadcast') {
+        const fromName = (m.from && m.from !== 'System') ? `${m.from} (Shout)` : 'Broadcast';
+        prefix = `<span class="msg-bc">[${escapeHtml(fromName)}] </span>`;
+      } else if (m.channel === 'self' || m.kind === 'self') {
+        prefix = `<span class="msg-who">${escapeHtml(m.from || 'You')} (you): </span>`;
+      } else if (m.from) {
+        prefix = `<span class="msg-who">${escapeHtml(m.from)}: </span>`;
+      }
+      return `<div class="msg-row">${prefix}${chatText(m.text, m.links)}</div>`;
+    }).join('')
+    : `<div style="color:var(--dim);text-align:center;padding:20px;">` +
+      `${all.length ? 'Nothing on this channel yet' : 'No messages received'}</div>`;
+  }
+
+  // Drop announcements are their own feed. They are server-wide - every rare
+  // costume any player finds - so mixing them into the chat box meant the
+  // chat box was nothing but drops and the conversation was invisible.
+  const drops = d.announcements || [];
+  const dropCard = $('dropCard');
+  if (dropCard) {
+    dropCard.style.display = drops.length ? '' : 'none';
+    if (drops.length) {
+      $('dropCount').textContent = drops.length;
+      $('dropBox').innerHTML = drops.slice(-40).reverse().map(m =>
+        `<div class="msg-row msg-drop-row"><span class="msg-drop">[Drop] </span>` +
+        `${chatText(m.text, m.links)}</div>`).join('');
+    }
+  }
+}
+
+// Chat channel filter, matching the overlay's own tabs.
+let chatChannel = localStorage.getItem('rozChatChannel') || 'all';
+const CHAT_CHANNELS = {
+  public: ['public', 'chat', 'self'],
+  whisper: ['whisper'],
+  party: ['party'],
+  guild: ['guild'],
+  broadcast: ['broadcast'],
+};
+
+function setChatChannel(key) {
+  chatChannel = key;
+  try { localStorage.setItem('rozChatChannel', key); } catch (e) { /* private mode */ }
+  const tabs = $('chatTabs');
+  if (tabs) {
+    [...tabs.children].forEach(b => b.classList.toggle(
+      'active', (b.getAttribute('onclick') || '').includes(`'${key}'`)));
+  }
+  if (lastSnapshot) renderChat(lastSnapshot);
+}
+
+// --- The day's chat, on the History tab ------------------------------------
+//
+// Same rows, read back off disk instead of out of the live tracker: the
+// overlay archives the conversation per character and the shouts once for the
+// server, and /api/history hands both back for whichever day is selected.
+// Today is served from the live snapshot instead, which since the overlay
+// restores its own log at startup is the same day's lines either way.
+//
+// Drops get a pill of their own and stay out of "All", exactly as they do on
+// the live tab - a server-wide feed buries a conversation.
+const HIST_CHAT_CHANNELS = Object.assign({ announce: ['announce'] }, CHAT_CHANNELS);
+let histChatChannel = 'all';
+let histChatRows = [];
+
+function setHistChatChannel(key) {
+  histChatChannel = key;
+  const tabs = $('histChatTabs');
+  if (tabs) {
+    [...tabs.children].forEach(b => b.classList.toggle(
+      'active', (b.getAttribute('onclick') || '').includes(`'${key}'`)));
+  }
+  renderHistChat();
+}
+
+function isoToday() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// Today's archive, if it is richer than the snapshot we already drew. Quiet
+// on failure: today has no file at all until the overlay's first flush, and
+// an empty answer must not wipe the lines already on screen.
+async function loadHistChatArchive(url, dateStr, charName) {
+  const have = histChatRows.length;
+  try {
+    const charParam = (charName && charName !== 'all')
+      ? `&char=${encodeURIComponent(charName)}` : '';
+    const res = await apiFetch(
+      `${url}/api/history?date=${encodeURIComponent(dateStr)}${charParam}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const rows = (data.chat || []).concat(data.shouts || []);
+    if (rows.length > have) setHistChatRows(rows);
+  } catch (e) { /* offline: the snapshot's lines stand */ }
+}
+
+function setHistChatRows(rows) {
+  histChatRows = (rows || [])
+    .filter(m => m && m.text)
+    .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  renderHistChat();
+}
+
+const HIST_BADGES = {
+  whisper: ['[PM]', 'msg-who'],
+  party: ['[Party]', 'msg-who'],
+  guild: ['[Guild]', 'msg-who'],
+  broadcast: ['[Shout]', 'msg-bc'],
+  announce: ['[Drop]', 'msg-drop'],
+  self: ['[Me]', 'msg-who'],
+};
+
+function renderHistChat() {
+  const box = $('histChatBox');
+  if (!box) return;
+  const wanted = HIST_CHAT_CHANNELS[histChatChannel]
+    || CHAT_CHANNELS[histChatChannel] || null;
+  const rows = wanted
+    ? histChatRows.filter(m => wanted.includes(m.channel || m.kind))
+    : histChatRows.filter(m => (m.channel || m.kind) !== 'announce');
+  const total = $('histChatTotal');
+  if (total) total.textContent = `${rows.length.toLocaleString()} Lines`;
+  if (!rows.length) {
+    box.innerHTML = `<div style="color:var(--dim);text-align:center;padding:20px;">` +
+      `${histChatRows.length ? 'Nothing on this channel that day' : 'No chat recorded'}</div>`;
+    return;
+  }
+  // Newest first, and bounded: a busy day is thousands of lines and the
+  // phone should not be asked to lay all of them out at once.
+  box.innerHTML = rows.slice(-300).reverse().map(m => {
+    const chan = m.channel || m.kind || 'public';
+    const b = HIST_BADGES[chan];
+    const badge = b ? `<span class="${b[1]}">${b[0]} </span>` : '';
+    const who = (m.from && m.from !== 'System')
+      ? `<span class="msg-who">${escapeHtml(m.from)}: </span>` : '';
+    const t = m.time ? `<span class="msg-time">${escapeHtml(m.time)} </span>` : '';
+    return `<div class="msg-row">${t}${badge}${who}${chatText(m.text, m.links)}</div>`;
+  }).join('');
+}
+
+// Chat text, escaped, with item links drawn the way an inventory row is.
+//
+// ro_session sends the message with its links written as "<Name (options)>"
+// and the parsed items beside it, each carrying the exact label it was
+// written as - so a segment is matched by label rather than by counting
+// brackets, which a player can type too.
+//
+// Escaping is not optional here. This is text other players wrote, and it
+// used to reach innerHTML raw.
+function chatText(text, links) {
+  const byLabel = {};
+  (links || []).forEach(it => { if (it && it.label) byLabel['<' + it.label + '>'] = it; });
+  return String(text == null ? '' : text)
+    .split(/(<[^<>\n]+>)/)
+    .map(part => {
+      const item = byLabel[part];
+      if (item) return itemChip(item);
+      const safe = escapeHtml(part);
+      return (part.startsWith('<') && part.endsWith('>'))
+        ? `<span class="msg-link">${safe}</span>` : safe;
+    })
+    .join('');
+}
+
+// One inline item: icon, a link into the database, its category tag and its
+// random options - the same four things the inventory row shows.
+function itemChip(item) {
+  const itid = item.itid;
+  const cat = classifyItem(item.type, itid, item.name, item.location);
+  const TAGS = {
+    weapon: ['WEAPON', 'var(--hp)', 'rgba(255,85,85,0.15)'],
+    armor: ['ARMOR', 'var(--acc)', 'rgba(127,209,255,0.15)'],
+    costume: ['COSTUME', '#d88df0', 'rgba(216,141,240,0.15)'],
+    card: ['CARD', 'var(--gold)', 'rgba(255,212,121,0.15)'],
+  };
+  const t = TAGS[cat];
+  const tag = t ? `<span style="font-size:9px;color:${t[1]};background:${t[2]};` +
+                  `padding:0 3px;border-radius:3px;">${t[0]}</span>` : '';
+  const opts = (item.options || []).map(o =>
+    `<span class="opt-chip">${escapeHtml(formatOption(o))}</span>`).join('');
+  return `<span class="chat-item">` +
+    `<img src="https://midgardhub.com/images/items/${itid}.png" ` +
+    `onerror="this.onerror=null;this.src='https://midgardhub.com/images/items/${itid}.gif';" ` +
+    `class="item-icon" alt="">` +
+    `<a href="https://midgardhub.com/database/items/${itid}" target="_blank" ` +
+    `class="item-link">${escapeHtml(item.name || ('Item #' + itid))}</a>` +
+    `${tag}${opts}</span>`;
+}
+
+// --- Party ---
+//
+// The party comes from five packets and only one of them carries a cell:
+// the server sends a member's position to the members standing on the same
+// map, which is exactly the set worth a dot. Everyone else keeps a name, a
+// bar and the name of the map they are on.
+let showTrail = localStorage.getItem('rozTrail') !== '0';
+
+function toggleTrail() {
+  showTrail = !showTrail;
+  localStorage.setItem('rozTrail', showTrail ? '1' : '0');
+  const btn = $('trailBtn');
+  if (btn) btn.classList.toggle('active', showTrail);
+  if (lastSnapshot) drawMap(lastSnapshot.location || {}, currentActors);
+}
+
+function renderParty(party) {
+  currentParty = party || null;
+  const card = $('partyCard'), list = $('partyList');
+  if (!card || !list) return;
+  const members = (party && party.members) || [];
+  if (!members.length) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+  $('partyName').textContent = (party && party.name) || 'Party';
+  $('partyCount').textContent = members.length;
+  list.innerHTML = members.map(m => {
+    const colour = partyColour(m);
+    const pct = m.hp_pct == null ? null : Math.max(0, Math.min(100, m.hp_pct));
+    const where = m.online === false ? 'offline'
+      : (m.x != null ? `${m.x}, ${m.y}` : (m.map || '-'));
+    const bar = pct == null ? '' :
+      `<div class="party-bar"><i style="width:${pct}%;background:${colour}"></i></div>`;
+    const hp = (m.hp != null && m.maxhp) ? `${n(m.hp)} / ${n(m.maxhp)}` : '';
+    return `<div class="party-row${m.self ? ' me' : ''}">
+      <span class="party-pip" style="background:${colour}"></span>
+      <div class="party-who">
+        <div class="party-name">${m.leader ? '<b class="acc">*</b> ' : ''}${escapeHtml(m.name || '?')}${m.self ? ' <span class="dim">(you)</span>' : ''}</div>
+        <div class="party-meta">${escapeHtml(where)}${hp ? '  ·  ' + hp : ''}</div>
+      </div>
+      ${bar}
+      <span class="party-pct">${pct == null ? '-' : pct.toFixed(0) + '%'}</span>
+    </div>`;
+  }).join('');
 }
 
 // --- Actor Filter & Render ---
@@ -624,6 +889,44 @@ function renderActorList() {
   }
 }
 
+// The eight facings, numbered the way the client numbers them: zero is
+// north and they run counter-clockwise. Canvas y grows downward while map y
+// grows north, so the y component is flipped where it is used.
+const DIR_VEC = [[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1],[1,0],[1,1]];
+
+// The game draws the player on its own minimap as an arrow rather than a dot,
+// because a dot is one fact short: it says where you are and not which way
+// you are about to walk. Until something has said which way that is - a step,
+// or a turn on the spot - a dot is what is honest.
+function drawFacing(g, x, y, dir, size, fill) {
+  if (dir == null || !DIR_VEC[dir]) {
+    g.strokeStyle = fill; g.fillStyle = fill; g.lineWidth = 1.5;
+    g.beginPath(); g.arc(x, y, size, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(x, y, size / 2, 0, Math.PI * 2); g.fill();
+    return;
+  }
+  const v = DIR_VEC[dir], len = Math.hypot(v[0], v[1]);
+  const ux = v[0] / len, uy = -v[1] / len, px = -uy, py = ux;
+  const back = size * 0.78, wide = size * 0.62, notch = size * 0.2;
+  g.beginPath();
+  g.moveTo(x + ux * size, y + uy * size);
+  g.lineTo(x - ux * back + px * wide, y - uy * back + py * wide);
+  g.lineTo(x - ux * notch, y - uy * notch);
+  g.lineTo(x - ux * back - px * wide, y - uy * back - py * wide);
+  g.closePath();
+  g.fillStyle = fill; g.fill();
+  g.strokeStyle = '#10131a'; g.lineWidth = 1.2; g.stroke();
+}
+
+// Green, amber, red - and grey for a member who is offline or out of sight.
+function partyColour(m) {
+  if (m.online === false) return '#6f7688';
+  if (m.hp_pct == null) return '#7fd1ff';
+  return m.hp_pct >= 50 ? '#2ecc71' : (m.hp_pct >= 25 ? '#ffcc66' : '#ff4d4d');
+}
+
+let currentParty = null;
+
 // --- Minimap Canvas ---
 function drawMap(loc, actors = []) {
   const canvas = $('mapCanvas');
@@ -679,7 +982,7 @@ function drawMap(loc, actors = []) {
   // loc.trail is the fallback for an older overlay that still inlines it.
   const mapPayload = (lastMapKey === (selectedClientKey || '') && lastMap) || {};
   const trail = (mapPayload.map === loc.map ? mapPayload.trail : null) || loc.trail || [];
-  if (trail.length > 1) {
+  if (trail.length > 1 && showTrail) {
     g.strokeStyle = '#7fd1ff'; g.lineWidth = 1.5;
     g.beginPath();
     trail.forEach((p, idx) => {
@@ -714,12 +1017,27 @@ function drawMap(loc, actors = []) {
     }
   });
 
-  // Draw Player Dot
+  // Party members standing on this map, drawn under our own marker so ours
+  // is never the one covered. A member somewhere else has a row in the party
+  // card and nothing to draw here.
+  ((currentParty && currentParty.members) || []).forEach(m => {
+    if (m.self || m.x == null) return;
+    const mx = (m.x + offX) / maxC * S;
+    const my = (maxC - (m.y + offY)) / maxC * S;
+    const colour = partyColour(m);
+    g.fillStyle = colour; g.strokeStyle = '#10131a'; g.lineWidth = 1.5;
+    g.beginPath(); g.arc(mx, my, 5, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.font = '9px Segoe UI'; g.textAlign = 'left';
+    g.fillStyle = '#10131a';
+    g.fillText(m.name || '', mx + 8, my - 5);
+    g.fillStyle = colour;
+    g.fillText(m.name || '', mx + 7, my - 6);
+  });
+
+  // Draw the player, facing the way the character faces
   const px = (x + offX) / maxC * S;
   const py = (maxC - (y + offY)) / maxC * S;
-  g.strokeStyle = '#ffd479'; g.fillStyle = '#ffd479';
-  g.beginPath(); g.arc(px, py, 7, 0, Math.PI * 2); g.stroke();
-  g.beginPath(); g.arc(px, py, 3.5, 0, Math.PI * 2); g.fill();
+  drawFacing(g, px, py, loc.dir, 9, '#ffd479');
 
   renderActorList();
 }
@@ -931,25 +1249,59 @@ function updateInvSource() {
   renderInv();
 }
 
-const OPTION_LABELS = {
-  1: "MHP +%d", 2: "MSP +%d", 3: "STR +%d", 4: "AGI +%d", 5: "VIT +%d", 6: "INT +%d", 7: "DEX +%d", 8: "LUK +%d",
-  9: "MHP +%d%%", 10: "MSP +%d%%", 11: "HP Recovery +%d%%", 12: "SP Recovery +%d%%", 13: "ATK +%d", 14: "ATK +%d%%",
-  15: "MATK +%d", 16: "MATK +%d%%", 17: "DEF +%d", 18: "MDEF +%d", 19: "MATK +%d", 20: "Critical +%d",
-  21: "Flee +%d", 22: "Hit +%d", 23: "Perfect Dodge +%d", 24: "Speed +%d%%", 25: "ASPD +%d", 26: "ASPD +%d%%",
-  27: "Cast Time -%d%%", 28: "After-Cast Delay -%d%%", 29: "SP Consumption -%d%%", 30: "Ranged Damage +%d%%",
-  31: "Heal +%d%%", 32: "Critical Damage +%d%%", 33: "Physical Melee Damage +%d%%"
-};
+// Random option wording.
+//
+// This used to be a hand-written table of the first 33 indices, and it was
+// both short and wrong. Short: a level 4 weapon rolls indices up in the
+// 140-180 range, so real rolls rendered as "Opt #170: +10". Wrong: index 17
+// is ATK and index 20 is DEF, but the copy here had 17 as DEF and 24 as
+// Speed, so the very same item read one way in the overlay and another way
+// on the phone.
+//
+// The client's own table has all 255 of them and is re-extracted after every
+// game patch, so it is fetched from the overlay rather than restated here.
+// It is fetched once - it is ~12 KB and never changes while the overlay is
+// running - and kept in localStorage so a reload renders correctly before
+// the fetch lands, and still renders correctly with the overlay unreachable.
+let OPTION_LABELS = {};
+try {
+  OPTION_LABELS = JSON.parse(localStorage.getItem('rozOptionLabels') || '{}');
+} catch (e) { OPTION_LABELS = {}; }
 
+async function loadOptionLabels() {
+  const url = activeStreamUrl || window.location.origin;
+  try {
+    const res = await apiFetch(`${url}/api/options`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const opts = data.options || {};
+    if (!Object.keys(opts).length) return;
+    OPTION_LABELS = opts;
+    try { localStorage.setItem('rozOptionLabels', JSON.stringify(opts)); } catch (e) {}
+    if (lastSnapshot) { try { renderChat(lastSnapshot); } catch (e) {} }
+    try { renderInv(); } catch (e) {}
+  } catch (e) { /* offline: the cached copy stands */ }
+}
+
+// printf the way Python's % does, because that is what wrote these strings:
+// %d takes the value, %% is a literal percent. Doing it with a plain
+// replace("%d", val) left the "%%" in "ATK +25%%" on the screen.
 function formatOption(opt) {
   if (!opt) return "";
   if (opt.text) return opt.text;
   const idx = Number(opt.index);
   const val = Number(opt.value) || 0;
-  const fmt = OPTION_LABELS[idx];
-  if (fmt) {
-    return fmt.replace("%d", String(val));
-  }
-  return `Opt #${idx}: +${val}`;
+  const fmt = OPTION_LABELS[String(idx)];
+  if (fmt === undefined || fmt === null) return `Opt #${idx}: +${val}`;
+  // A few options carry no number at all - "Weapon element: Fire" is the
+  // whole bonus - and are already finished text.
+  if (fmt.indexOf('%') < 0) return fmt || `Opt #${idx}: +${val}`;
+  return fmt.replace(/%(.)/g, (m, c) => {
+    if (c === '%') return '%';
+    if (c === 'd' || c === 'i' || c === 'u') return String(val);
+    if (c === 's') return String(val);
+    return m;
+  });
 }
 
 function renderInv() {
@@ -1048,7 +1400,7 @@ function renderInv() {
     let optionsHtml = '';
     if (options.length > 0) {
       optionsHtml = `<div class="opt-container">` +
-        options.map(opt => `<span class="opt-chip">✨ ${formatOption(opt)}</span>`).join('') +
+        options.map(opt => `<span class="opt-chip">✨ ${escapeHtml(formatOption(opt))}</span>`).join('') +
         `</div>`;
     }
 
@@ -1228,11 +1580,9 @@ async function tick() {
     $('dmgDealt').textContent = n(k.damage_dealt);
     $('dmgTaken').textContent = n(k.damage_taken);
 
-    const buffs = d.buffs || [];
-    $('buffCount').textContent = buffs.length;
-    $('buffsContainer').innerHTML = buffs.length ? buffs.map(b =>
-      `<div class="buff-pill"><span class="acc">#${b.index}</span> <b>${b.remain_sec == null ? '∞' : b.remain_sec < 0 ? 'Perm' : Math.round(b.remain_sec)+'s'}</b></div>`
-    ).join('') : '<span style="color:var(--dim)">No active buffs</span>';
+    readBuffs(d.buffs || []);
+    renderStats(d.stats);
+    readSkills(d.skills);
 
     // Items, Inventory, Cart & Storage. The containers ride a slower request
     // of their own - every fifth tick, and only while their tab is on screen.
@@ -1246,28 +1596,11 @@ async function tick() {
     // come from the snapshot every tick; the trail behind them is fetched on
     // its own, and only while the map is being looked at.
     if (activeTab === 'map') refreshMap();
+    renderParty(d.party);
     drawMap(loc, d.actors || d.monsters || []);
 
-    // Chat
-    const msgs = d.messages || [];
-    if (msgs.length) {
-      $('chatBox').innerHTML = msgs.slice(-25).reverse().map(m => {
-        let prefix = '';
-        if (m.channel === 'broadcast' || m.kind === 'broadcast') {
-          const fromName = (m.from && m.from !== 'System') ? `${m.from} (Shout)` : 'Broadcast';
-          prefix = `<span class="msg-bc">[${fromName}] </span>`;
-        } else if (m.channel === 'self' || m.kind === 'self') {
-          // Our own public line, marked so a log of one map's chatter is
-          // readable at a glance.
-          prefix = `<span class="msg-who">${m.from || 'You'} (you): </span>`;
-        } else if (m.from) {
-          prefix = `<span class="msg-who">${m.from}: </span>`;
-        }
-        return `<div class="msg-row">${prefix}${m.text || ''}</div>`;
-      }).join('');
-    }
-
-  } catch(err) {
+    renderChat(d);
+  } catch (err) {
     $('liveDot').classList.add('off');
     failedPolls++;
     if (failedPolls >= 2) {
@@ -1284,4 +1617,299 @@ if (getRoom()) {
 } else {
   $('pairModal').classList.add('show');
 }
+// --- Character sheet & skills ---------------------------------------------
+//
+// Both come off the same snapshot as everything else on this tab. The sheet
+// arrives whole once per map login and then one stat at a time; the session
+// merges those, so what lands here is already a single consistent reading and
+// this only has to lay it out.
+
+const statNum = v => v == null ? '-'
+  : (Math.round(v) === v ? v.toLocaleString() : v.toFixed(1));
+
+function statLine(row, isPrimary) {
+  const bonus = row.bonus;
+  // A bonus of zero is not worth a "+0" - the game prints one, but it prints
+  // it in a window that is not competing for room on a phone.
+  const plus = bonus ? `<span class="b">+${statNum(bonus)}</span>` : '<span class="b"></span>';
+  // Where the game puts its raise arrow: what the next point of this stat
+  // costs in status points.
+  const need = isPrimary
+    ? `<span class="need">${row.need != null ? row.need : ''}</span>` : '';
+  return `<div class="stat-line"><span class="k">${escapeHtml(row.label)}</span>` +
+         `<span class="v">${statNum(row.value)}</span>${plus}${need}</div>`;
+}
+
+function renderStats(st) {
+  const empty = $('statEmpty');
+  const prim = $('statPrimary'), comb = $('statCombat');
+  if (!st || !(st.primary || []).length) {
+    // Not a zeroed sheet: a capture that started after this character's map
+    // login has genuinely never been told what their Str is, and showing "0"
+    // would be a lie the player could act on.
+    prim.innerHTML = ''; comb.innerHTML = '';
+    empty.style.display = 'block';
+    $('statPoints').innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none';
+  prim.innerHTML = (st.primary || []).map(r => statLine(r, true)).join('');
+  // The session orders these Atk, Def, Matk, Mdef, Hit, Flee, Critical, Aspd,
+  // which is the game's own pairing once the grid puts two on a row.
+  comb.innerHTML = (st.combat || []).map(r => statLine(r, false)).join('');
+  const bits = [];
+  if (st.status_points != null) bits.push(`Status Point <b>${st.status_points}</b>`);
+  if (st.skill_points) bits.push(`Skill Point <b>${st.skill_points}</b>`);
+  $('statPoints').innerHTML = bits.map(b => `<span>${b}</span>`).join('');
+}
+
+let skillFilter = 'all';
+let lastSkills = [];
+
+function setSkillFilter(f) {
+  skillFilter = f;
+  ['all', 'active', 'passive'].forEach(k => {
+    const b = $('pillSkill' + k.charAt(0).toUpperCase() + k.slice(1));
+    if (b) b.classList.toggle('active', k === f);
+  });
+  renderSkills();
+}
+
+function renderSkills() {
+  const box = $('skillList');
+  if (!box) return;
+  const q = ($('skillSearch').value || '').trim().toLowerCase();
+  const rows = lastSkills.filter(sk => {
+    // passive is null on a client whose skill list uses the short entry form,
+    // and an unknown is not a match for either filter's opposite.
+    if (skillFilter === 'active' && sk.passive === true) return false;
+    if (skillFilter === 'passive' && sk.passive !== true) return false;
+    return !q || (sk.name || '').toLowerCase().includes(q);
+  });
+  $('skillCount').textContent = rows.length;
+  if (!rows.length) {
+    box.innerHTML = '<div style="color:var(--dim);text-align:center;padding:20px 10px;font-size:12px;">'
+      + (lastSkills.length ? 'No skill matches that search'
+         : 'No skill list seen yet<br><span style="font-size:11px;color:#50576a;">'
+           + 'The server sends it at map login - change map or relog to fill this in</span>')
+      + '</div>';
+    return;
+  }
+  box.innerHTML = rows.map(sk => {
+    // The client's own icon, named after the skill's SKID constant. A skill
+    // the archive has no file for - or any machine with no game installed -
+    // gets an empty square rather than a broken-image glyph.
+    const icon = `<img class="skill-icon" src="${activeStreamUrl || ''}/skillicon.png?id=${sk.skid}"` +
+                 ` alt="" onerror="this.style.visibility='hidden'">`;
+    const maxed = sk.max_lv && sk.lv === sk.max_lv;
+    const level = sk.max_lv
+      ? `<b>${sk.lv}</b>/${sk.max_lv}`
+      : `<b>${sk.lv != null ? sk.lv : '-'}</b>`;
+    const meta = sk.passive === true ? 'passive' : (sk.sp ? `${sk.sp} SP` : '');
+    return `<div class="skill-row${maxed ? ' maxed' : ''}">${icon}` +
+           `<span class="skill-name">${escapeHtml(sk.name)}</span>` +
+           `<span class="skill-meta">${meta}</span>` +
+           `<span class="skill-lv">${level}</span></div>`;
+  }).join('');
+}
+
+// Rebuilding the list every poll would drop whatever the reader had typed in
+// the search box out from under them, so it is rebuilt only when the list
+// itself changes - which is at map login and when a point is spent.
+// null, not '': an empty list is a real signature, and starting on it
+// meant the first poll matched and the empty-state message never drew.
+let lastSkillSig = null;
+function readSkills(skills) {
+  const sig = (skills || []).map(sk => `${sk.skid}:${sk.lv}`).join(',');
+  if (sig === lastSkillSig) return;
+  lastSkillSig = sig;
+  lastSkills = skills || [];
+  renderSkills();
+}
+
+// --- Active statuses -------------------------------------------------------
+//
+// The snapshot says what is running and how much is left of it at the instant
+// it was taken. Polls are two seconds apart and the tiles have to count down
+// between them, so what is kept here is the wall-clock time each status ends
+// at rather than the seconds that were left when it arrived, and the tick
+// reads the clock instead of subtracting.
+//
+// The tiles are rebuilt only when the set of statuses changes. Rebuilding them
+// every tick would shut whatever tooltip is open under the reader's finger,
+// and a status that is one second shorter than it was is not a different
+// status.
+let buffModel = [];
+let buffSig = '';
+
+// "Increase Agility" -> "IA". What a tile shows when the client has no icon
+// for the effect - about a third of them, and most of those are effects
+// nobody will ever be under.
+const buffAbbr = name => (name || '').replace(/[^A-Za-z0-9 ]+/g, ' ').trim()
+  .split(/ +/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+
+// Under a minute the seconds are the whole story; over ten, they are noise
+// that changes every tick. In between, both. dur() is the right wording for a
+// row of text and too wide for a 44px tile.
+const clock = s => {
+  s = Math.max(0, Math.ceil(s));
+  if (s >= 3600) return (s / 3600 | 0) + 'h' + String(s % 3600 / 60 | 0).padStart(2, '0');
+  if (s >= 600) return (s / 60 | 0) + 'm';
+  if (s >= 60) return (s / 60 | 0) + ':' + String(s % 60).padStart(2, '0');
+  return s + 's';
+};
+
+function readBuffs(buffs) {
+  const now = Date.now() / 1000;
+  buffModel = (buffs || []).map(b => ({
+    id: b.index,
+    name: b.name || ('Status #' + b.index),
+    desc: b.desc || [],
+    icon: !!b.icon,
+    // A permanent status reports -1; one sent by the short packet, which has
+    // no duration field at all, reports nothing. Neither gets a countdown.
+    perm: b.remain_sec != null && b.remain_sec < 0,
+    untimed: b.remain_sec == null,
+    ends: (b.remain_sec != null && b.remain_sec >= 0) ? now + b.remain_sec : null,
+    total: b.total_sec || null,
+  }));
+  const sig = buffModel.map(b => b.id).join(',');
+  if (sig !== buffSig) { buffSig = sig; paintBuffs(); }
+  tickBuffs();
+}
+
+function paintBuffs() {
+  const box = $('buffsContainer');
+  if (!box) return;
+  hideBuffTip();
+  if (!buffModel.length) {
+    box.className = '';
+    box.innerHTML = '<span class="dim" style="color:var(--dim)">No active buffs</span>';
+    return;
+  }
+  box.className = 'buff-grid';
+  box.innerHTML = buffModel.map((b, i) => {
+    // The badge sits under the picture rather than instead of it, so an icon
+    // the overlay cannot produce - no client installed, or a name this patch
+    // dropped - falls back by removing a single element.
+    const art = b.icon
+      ? '<img class="buff-img" src="' + (activeStreamUrl || '') + '/statusicon.png?i=' + b.id
+        + '" alt="" onerror="this.remove()">'
+      : '';
+    return '<div class="buff-tile" tabindex="0" data-b="' + i + '">'
+      + '<span class="buff-art"><span class="buff-abbr">'
+      + escapeHtml(buffAbbr(b.name)) + '</span>' + art
+      + '<span class="buff-drain"></span></span>'
+      + '<span class="buff-left">-</span></div>';
+  }).join('');
+  box.querySelectorAll('.buff-tile').forEach(el => {
+    el.addEventListener('mouseenter', () => showBuffTip(el));
+    el.addEventListener('focus', () => showBuffTip(el));
+    el.addEventListener('mouseleave', hideBuffTip);
+    el.addEventListener('blur', hideBuffTip);
+    // Phones have no hover, and the phone is what this page is mostly read on.
+    el.addEventListener('click', ev => {
+      ev.stopPropagation();
+      if (buffTipFor === el) hideBuffTip(); else showBuffTip(el);
+    });
+  });
+}
+
+// One floating tooltip for the whole grid, parked on the body and placed with
+// fixed coordinates. A tooltip living inside its tile is 210px hanging off a
+// 44px box: at the left or right edge of a phone it goes off screen, and any
+// ancestor that scrolls clips it. This has neither problem.
+let buffTipEl = null;
+let buffTipFor = null;
+
+function showBuffTip(el) {
+  const b = buffModel[+el.dataset.b];
+  if (!b) return;
+  if (!buffTipEl) {
+    buffTipEl = document.createElement('div');
+    buffTipEl.className = 'buff-tip';
+    document.body.appendChild(buffTipEl);
+    document.addEventListener('click', hideBuffTip);
+  }
+  buffTipEl.innerHTML = '<b>' + escapeHtml(b.name) + '</b>'
+    + (b.desc.length ? '<br>' + b.desc.map(escapeHtml).join('<br>') : '');
+  buffTipEl.style.visibility = 'hidden';
+  buffTipEl.style.display = 'block';
+  const r = el.getBoundingClientRect();
+  const t = buffTipEl.getBoundingClientRect();
+  const margin = 8;
+  let left = r.left + r.width / 2 - t.width / 2;
+  left = Math.max(margin, Math.min(left, window.innerWidth - t.width - margin));
+  // Above the tile by preference, below it when there is no room above, and
+  // pinned inside the viewport either way - a tile low on a phone screen would
+  // otherwise put its tooltip below the fold, where the finger that opened it
+  // cannot see it.
+  let top = r.top - t.height - 6;
+  if (top < margin) top = r.bottom + 6;
+  top = Math.max(margin, Math.min(top, window.innerHeight - t.height - margin));
+  buffTipEl.style.left = Math.round(left) + 'px';
+  buffTipEl.style.top = Math.round(top) + 'px';
+  buffTipEl.style.visibility = 'visible';
+  buffTipFor = el;
+}
+
+function hideBuffTip() {
+  if (buffTipEl) buffTipEl.style.display = 'none';
+  buffTipFor = null;
+}
+
+function tickBuffs() {
+  const box = $('buffsContainer');
+  if (!box || !buffModel.length) return;
+  const now = Date.now() / 1000;
+  let live = 0;
+  box.querySelectorAll('.buff-tile').forEach(el => {
+    const b = buffModel[+el.dataset.b];
+    if (!b) return;
+    const left = b.ends == null ? null : b.ends - now;
+    if (left != null && left <= 0) {
+      // Gone before the next poll can say so. Hidden rather than removed: the
+      // poll is the authority on what is running, and it is two seconds away.
+      el.style.display = 'none';
+      if (buffTipFor === el) hideBuffTip();
+      return;
+    }
+    el.style.display = '';
+    live++;
+    const t = el.querySelector('.buff-left');
+    t.textContent = b.untimed ? 'on' : b.perm ? '∞' : clock(left);
+    t.classList.toggle('soon', left != null && left <= 10);
+    // The wedge covers what has already elapsed, so it sweeps round to fill
+    // the icon exactly as the status expires - the game's own reading, and
+    // the opposite of what a bar showing time remaining would do. Statuses
+    // with no duration have nothing to sweep and stay clear.
+    const drain = el.querySelector('.buff-drain');
+    const gone = (left != null && b.total)
+      ? Math.min(1, Math.max(0, 1 - left / b.total)) : 0;
+    drain.style.setProperty('--buff-drain-p', (gone * 100).toFixed(2) + '%');
+    drain.classList.toggle('low', left != null && b.total && left <= 60);
+  });
+  const count = $('buffCount');
+  if (count) count.textContent = live;
+}
+
+setInterval(tickBuffs, 1000);
+
+// The trail button remembers its answer per browser, so the pill has to be
+// set from that answer rather than from the markup's default.
+(() => {
+  const btn = $('trailBtn');
+  if (btn) btn.classList.toggle('active', showTrail);
+})();
+
 setInterval(tick, 2000);
+
+// The remembered chat channel has to be reflected in the tabs at load, or the
+// pill says "All" while the box is filtered to whispers.
+(function () {
+  try { setChatChannel(chatChannel); } catch (e) { /* tabs not on this page */ }
+})();
+
+// The option table, once. Everything that draws an item - the inventory, the
+// item links in chat, the history log - words its random options from it.
+loadOptionLabels();

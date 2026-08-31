@@ -1,12 +1,14 @@
 {
-  "version": "1.6.1",
-  "data_version": "2026.08.27",
-  "release_date": "2026-08-27",
-  "changelog": "* **Weight alerts.** Set the percentage you want to hear about (default 70%). You are told once when the weight crosses your mark, and once more at 90% where the character can no longer attack or pick anything up - and nothing in between, so farming past your own line does not repeat itself. A line re-arms only after the weight really comes down.\n* **Send All (Preview).** A button in the alerts dialog that sends a sample of every alert type - low HP, death, level ups, whispers, card / gear / costume drops, both weight stages and a stalled stream - with placeholder names, so you can see how each one looks before it matters. They come from the same code the live alerts use.\n* Release notes now carry their own summary instead of pointing at a file that was never published.",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.6.1/ROZ_Overlay.exe",
-  "exe_size": 14305984,
-  "exe_sha256": "7e88ffe3a76b3da5e23e8b16d965b0bd2bfa9cda77a8343c5b594df0ec1421a9",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.6.1/ro_data.bin",
-  "data_size": 15753842,
-  "data_sha256": "f21d3fc68f5ee5ae87930e93561e2105e0aca80eaa913b8292b87ced216942d1"
+  "version": "1.7.0",
+  "data_version": "2026.08.31",
+  "release_date": "2026-08-31",
+  "changelog": "* **Status effects.** Every buff and debuff on your character now shows with its real name, its icon and a live countdown - on the overlay and on the dashboard, where a tooltip carries the full description. The names and icons are read out of your own game client, so they match what you see in game.\n* **New on the dashboard:** your full stat sheet, a skill list with icons and a search filter, a party panel, and which way your character is facing on the minimap with an optional trail of where you have walked.\n* **Chat survives a restart.** The day's chat, shouts and announcements come back when you reopen the overlay, kept per character and per day, and yesterday is filed at midnight rather than mixed into today. The same archive is readable under **History** on the dashboard, by channel and by character.\n* **Random options read correctly everywhere.** The dashboard used to carry its own short list of option names, so a level 4 weapon showed lines like `Opt #170: +10` and some options disagreed with the overlay. It now reads the same complete table the overlay does - there is no longer such a thing as an unknown option, in a chat link or in your inventory.\n* **No Administrator prompt unless it is really needed.** The overlay tries to read the connection first and only asks if every method has been refused; with Npcap installed without its \"Administrators only\" option it never asks at all. A **Restart as Administrator** button in Setup is there for the PCs that do need it.\n* **Updates are signed, and reversible.** The update manifest now carries a signature the app checks before it reads anything out of it, and an install that cannot be completed puts the previous version back rather than leaving you with neither.\n* **Your dashboard PIN, pairing key and any Discord or Telegram webhook are now encrypted** in the settings file, tied to your Windows account.\n* **Crash fixes.** Opening equipment storage used to stop the overlay updating at all; a costume or job change on someone standing near you could throw; a saved tab that a build does not have stopped the window from appearing; and a data file that does not match the program now says so by name instead of showing a bare decompression error. Anything uncaught now reaches the log and is reported once.\n* Every message reader is now run against real recorded traffic, and against truncated input, before a build can go out - it found two of the fixes above.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.7.0/ROZ_Overlay.exe",
+  "exe_size": 13483560,
+  "exe_sha256": "22c5531d07dc0906d46915166a0e629e74d0653a545124e0069e9e4e0af39e7a",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.7.0/ro_data.bin",
+  "data_size": 16307218,
+  "data_sha256": "615abda817e8abd43efc056bcb47a253ca538a669c1f938bfb07a0291428935b",
+  "min_data_version": "2026.08.31",
+  "signature": "AYvNgACqQRPnMjHS3sUInwwpOR7P1n2HgaqF+cKR2ANfv6Z5nDjIWG586h1RyuKMuDiai0/P1dWrVKJzba+qCQ=="
 }
