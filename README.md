@@ -43,7 +43,7 @@
     <tr>
       <td align="center" valign="top">
         <b>💬 Chat — shouts with the gear spelled out</b><br>
-        <img src="screenshots/dash_chat.png" width="440" alt="Chat: player shouts with item cards and every random option named, plus server drop announcements" />
+        <img src="screenshots/dash_shouts.png" width="440" alt="Chat: player shouts with item cards and every random option named, plus server drop announcements" />
       </td>
       <td align="center" valign="top">
         <b>📅 History — the day, kept</b><br>
