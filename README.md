@@ -321,6 +321,29 @@ All companion telemetry is saved strictly on your local PC in your user profile:
 
 ---
 
+## ☕ Support development
+
+ROZ Overlay is free and stays free. Nothing is behind a paywall, no feature is
+held back, and updates do not depend on anyone paying — that is not going to
+change. If it has been useful to you and you feel like putting something in the
+tip jar, it is genuinely appreciated:
+
+<div align="center">
+  <a href="https://ko-fi.com/elijahawesam">
+    <img src="https://img.shields.io/badge/Ko--fi-Support%20development-ff5e5b?style=for-the-badge&logo=kofi&logoColor=white" alt="Support development on Ko-fi" />
+  </a>
+</div>
+
+The first thing it would go toward is a **code-signing certificate**. That is the
+few-hundred-dollars-a-year thing standing between you and the "unknown publisher"
+warning on every download — see [above](#-windows-will-say-unknown-publisher--here-is-why-and-what-to-do).
+After that it is simply time: more features, and keeping up with the client.
+
+No obligations in either direction. A tip buys no priority and no promises, and
+not tipping costs you nothing — you get the same build either way.
+
+---
+
 ## ⚖️ Legal & Copyright Notice
 
 ROZ Monitor and ROZ Overlay are independent open-source companion tools.  
