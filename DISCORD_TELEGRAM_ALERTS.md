@@ -46,6 +46,14 @@ Set the mark at 90% or above and you get one line, not two — someone who asked
 2. Go to the **Setup** tab.
 3. Click **`Alerts`**.
 
+<div align="center">
+  <img src="screenshots/alerts_dialog.png" width="366" alt="The Remote Alerts Configuration window: Discord webhook URL, Telegram bot token and chat ID, weight percentage, minimum random options, the custom rare item watchlist, and the Send Test Alert / Send All (Preview) / Save & Close buttons" />
+</div>
+
+> [!NOTE]
+> The webhook URL shown above is an illustrative placeholder. Everything else
+> is the window as it actually looks.
+
 ---
 
 ## 🟣 1. Discord webhook (about a minute)
