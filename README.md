@@ -13,16 +13,41 @@
 
 ## 📸 Screenshots & Visual Preview
 
+> [!NOTE]
+> Every character name in these screenshots — mine and everyone else's — has been
+> replaced with a pseudonym. The item names, monster names, numbers and chat are
+> exactly as they were captured from a live session.
+
 <div align="center">
   <table>
     <tr>
-      <td align="center" width="62%" valign="top">
-        <b>Live Web Radar Dashboard</b><br>
-        <img src="screenshots/web_monitor_portal.png" width="520" alt="Live Web Radar Dashboard" />
+      <td align="center" width="50%" valign="top">
+        <b>📊 Overview — multi-box, vitals, EXP/hr</b><br>
+        <img src="screenshots/dash_overview.png" width="440" alt="Overview: two game clients side by side with HP, weight, EXP rates and time to level" />
       </td>
-      <td align="center" width="38%" valign="top">
-        <b>Desktop Overlay Companion</b><br>
-        <img src="screenshots/overlay_desktop.png" width="300" alt="Desktop Overlay Companion" />
+      <td align="center" width="50%" valign="top">
+        <b>⚔️ Combat — buffs, stat sheet, skills</b><br>
+        <img src="screenshots/dash_combat.png" width="440" alt="Combat: DPS and max hit, active buffs with countdowns, full character stats and the skill list" />
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">
+        <b>🗺️ Map — live position, party, who is nearby</b><br>
+        <img src="screenshots/dash_map.png" width="440" alt="Map: live position on the town map with the party card and every player and monster in sight" />
+      </td>
+      <td align="center" valign="top">
+        <b>💎 Loot — gear with its random options</b><br>
+        <img src="screenshots/dash_loot.png" width="440" alt="Loot: equipment with each random option written out by name" />
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="top">
+        <b>💬 Chat — shouts with the gear spelled out</b><br>
+        <img src="screenshots/dash_chat.png" width="440" alt="Chat: player shouts with item cards and every random option named, plus server drop announcements" />
+      </td>
+      <td align="center" valign="top">
+        <b>📅 History — the day, kept</b><br>
+        <img src="screenshots/dash_history.png" width="440" alt="History: daily EXP and zeny totals, monster kill breakdown, loot ledger and the saved chat log" />
       </td>
     </tr>
   </table>
