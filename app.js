@@ -727,13 +727,7 @@ function chatText(text, links) {
 function itemChip(item) {
   const itid = item.itid;
   const cat = classifyItem(item.type, itid, item.name, item.location);
-  const TAGS = {
-    weapon: ['WEAPON', 'var(--hp)', 'rgba(255,85,85,0.15)'],
-    armor: ['ARMOR', 'var(--acc)', 'rgba(127,209,255,0.15)'],
-    costume: ['COSTUME', '#d88df0', 'rgba(216,141,240,0.15)'],
-    card: ['CARD', 'var(--gold)', 'rgba(255,212,121,0.15)'],
-  };
-  const t = TAGS[cat];
+  const t = itemTag(cat, item.location, item.type);
   const tag = t ? `<span style="font-size:9px;color:${t[1]};background:${t[2]};` +
                   `padding:0 3px;border-radius:3px;">${t[0]}</span>` : '';
   const opts = (item.options || []).map(o =>
@@ -1155,6 +1149,63 @@ function classifyItem(itemType, itid, name, location) {
   }
 }
 
+// One bit per place an item can be worn, so the badge is read off the wire
+// rather than inferred. Order matters: the right hand is tested before the
+// off hand, so a two-hander (0x22) is a WEAPON and not a SHIELD.
+const EQUIP_SLOTS = [
+  [0x000002, 'WEAPON'],
+  [0x000020, 'SHIELD'],
+  [0x000010, 'ARMOR'],
+  [0x000301, 'HEADGEAR'],   // upper, mid and lower head, in one label
+  [0x000004, 'GARMENT'],
+  [0x000040, 'SHOES'],
+  [0x000088, 'ACCESSORY'],  // left 0x08, right 0x80
+  [0x008000, 'AMMO'],
+];
+
+const TAG_WEAPON = ['var(--hp)', 'rgba(255,85,85,0.15)'];
+const TAG_GEAR = ['var(--acc)', 'rgba(127,209,255,0.15)'];
+const TAG_COSTUME = ['#d88df0', 'rgba(216,141,240,0.15)'];
+const TAG_SHADOW = ['#b48ce8', 'rgba(180,140,232,0.15)'];
+const TAG_CARD = ['var(--gold)', 'rgba(255,212,121,0.15)'];
+const TAG_AMMO = ['var(--dim)', 'rgba(150,150,150,0.15)'];
+
+// [label, colour, background] for one item, or null for nothing worth showing.
+//
+// Colour stays coarse - one for weapons, one for everything else you wear -
+// and only the word gets specific. Eight colours would be a rainbow on a
+// list that is already dense; the reader wants to know it is a shield, not
+// to learn a palette.
+//
+// Costume and shadow are tested before the slots because a costume headgear
+// is a costume: it occupies its own bits and shares nothing with the real
+// headgear slot.
+function itemTag(cat, location, itemType) {
+  const loc = Number(location) || 0;
+  if (loc & LOC_SHADOW) return ['SHADOW', ...TAG_SHADOW];
+  if (loc & LOC_COSTUME) return ['COSTUME', ...TAG_COSTUME];
+  if (cat === 'card') return ['CARD', ...TAG_CARD];
+
+  for (const [bit, label] of EQUIP_SLOTS) {
+    if (!(loc & bit)) continue;
+    // A weapon held in the off hand is still a weapon - the type byte is the
+    // only thing that separates it from a shield.
+    if (label === 'SHIELD') {
+      const t = Number(itemType);
+      if (t === 5 || t === 9) return ['WEAPON', ...TAG_WEAPON];
+    }
+    if (label === 'WEAPON') return [label, ...TAG_WEAPON];
+    if (label === 'AMMO') return [label, ...TAG_AMMO];
+    return [label, ...TAG_GEAR];
+  }
+
+  // No location at all: fall back to the coarse category.
+  if (cat === 'weapon') return ['WEAPON', ...TAG_WEAPON];
+  if (cat === 'armor') return ['ARMOR', ...TAG_GEAR];
+  if (cat === 'costume') return ['COSTUME', ...TAG_COSTUME];
+  return null;
+}
+
 function setInvCategory(cat) {
   invCategory = cat;
   invSubCategory = 'all';
@@ -1399,12 +1450,12 @@ function renderInv() {
     const cards = i.cards || [];
     const options = i.options || [];
 
-    // Category tag style
-    let tagHtml = '';
-    if (cat === 'card') tagHtml = '<span style="font-size:9px;color:var(--gold);background:rgba(255,212,121,0.15);padding:1px 4px;border-radius:3px;margin-left:4px;">CARD</span>';
-    else if (cat === 'weapon') tagHtml = '<span style="font-size:9px;color:var(--hp);background:rgba(255,85,85,0.15);padding:1px 4px;border-radius:3px;margin-left:4px;">WEAPON</span>';
-    else if (cat === 'armor') tagHtml = '<span style="font-size:9px;color:var(--acc);background:rgba(127,209,255,0.15);padding:1px 4px;border-radius:3px;margin-left:4px;">ARMOR</span>';
-    else if (cat === 'costume') tagHtml = '<span style="font-size:9px;color:#d88df0;background:rgba(216,141,240,0.15);padding:1px 4px;border-radius:3px;margin-left:4px;">COSTUME</span>';
+    // Category tag: the equip slot when the item has one.
+    const tg = itemTag(cat, i.location, i.type);
+    const tagHtml = tg
+      ? `<span style="font-size:9px;color:${tg[1]};background:${tg[2]};` +
+        `padding:1px 4px;border-radius:3px;margin-left:4px;">${tg[0]}</span>`
+      : '';
 
     // Refine & Grade badges
     let refineBadge = (refine > 0) ? `<span class="refine-badge">+${refine}</span>` : '';
