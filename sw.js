@@ -1,9 +1,9 @@
-﻿const CACHE_NAME = "roz-pwa-v1.7.1";
+﻿const CACHE_NAME = "roz-pwa-v1.7.2";
 const ASSETS = [
   "./",
   "index.html",
-  "style.css?v=1.7.1",
-  "app.js?v=1.7.1",
+  "style.css?v=1.7.2",
+  "app.js?v=1.7.2",
   "manifest.json",
   "favicon.ico"
 ];

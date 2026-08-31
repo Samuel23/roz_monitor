@@ -1,14 +1,14 @@
 {
-  "version": "1.7.1",
+  "version": "1.7.2",
   "data_version": "2026.08.31",
   "release_date": "2026-08-31",
-  "changelog": "Five fixes on top of v1.7.0.\n\n* **Event announcements read as words again.** Some server announcements carry no text - the body is a short code your client looks up in its own table to draw the sentence. The overlay was publishing the code, so an event arrived in the chat log as `SA0D` instead of *\"Transform into Smokie!\"*. Those announcements were also being given a colour taken from a field that is not a colour, so their text could come out tinted by an account number.\n* **Random options on the phone.** The published dashboard fetched its option names before it knew which overlay to ask, took the failure, and never asked again - so options on the phone stayed `Opt #170: +5` while the overlay had the name. It now asks once the connection is up, and again if you point it at a different PC.\n* **Telegram drop alerts** repeated their own icon: *\"CARD DROP\"* arrived with the card emoji twice. Discord was never affected.\n* **The alerts window** cut off its own description line at both ends. It wraps now.\n* **The Active Buffs heading** on the dashboard spread `( 5 )` across the whole card instead of reading `(5)`.\n\nNothing else changed. If v1.7.0 is working for you, this is worth taking but not urgent.",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.7.1/ROZ_Overlay.exe",
-  "exe_size": 13484336,
-  "exe_sha256": "8cc4cf38d1be25d74832262463d3db10f0b4b823cff8296f626471b177d32406",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.7.1/ro_data.bin",
+  "changelog": "Equipment now says which slot it goes in.\n\n* **A shield is no longer tagged a weapon.** A Buckler sat in the Equip list wearing the same red WEAPON badge as an axe. The badge was decided by \"is it worn in either hand\", and a shield is worn in one of them.\n* **Ten tags instead of three.** `ARMOR` had been standing in for six different places you can wear something. Items are now labelled by their actual slot - **WEAPON, SHIELD, ARMOR, HEADGEAR, GARMENT, SHOES, ACCESSORY, AMMO**, plus **COSTUME** and **SHADOW**, which previously shared one badge. A two-handed weapon is still a weapon, and a dagger held in the off hand is still a weapon.\n\nThe colours have not changed - one for weapons, one for everything else you wear - so only the words are new.\n\nThis is a dashboard change. If you use the phone dashboard it is already live and this build is not needed for it; the overlay's own window carries its own copy of the dashboard, and this is how that copy gets the same fix.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.7.2/ROZ_Overlay.exe",
+  "exe_size": 13486400,
+  "exe_sha256": "b3988c3b0a1dc2815769cd39aeca20fadadb4e37dc69ef63f500c390624ad5eb",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.7.2/ro_data.bin",
   "data_size": 16307218,
   "data_sha256": "615abda817e8abd43efc056bcb47a253ca538a669c1f938bfb07a0291428935b",
   "min_data_version": "2026.08.31",
-  "signature": "bIS8B1T7TNm/AUGFDRI4InaYbvSF9KR9f/RoL2CCYBiT0lolAx16nOVqVX4JD2hQzwpAlfWy2ma3fHvXSesqBg=="
+  "signature": "KqvN0s2VlJ2k5Hg4cjuF0VBnVzkp8nj3IyxOX50g3CZv/dttGvKDHMDyX5r06QhqO3cl7oHUStITX45gNcfpAQ=="
 }
