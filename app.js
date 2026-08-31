@@ -1268,8 +1268,25 @@ try {
   OPTION_LABELS = JSON.parse(localStorage.getItem('rozOptionLabels') || '{}');
 } catch (e) { OPTION_LABELS = {}; }
 
+// Which stream the table in hand came from, and the last one we asked.
+// Both are needed because this runs once before anything is connected: on the
+// published dashboard `activeStreamUrl` is still empty at that point, so the
+// fetch went to the GitHub Pages origin, 404'd, and was never tried again -
+// which is why every option on the phone stayed "Opt #170: +5" while the
+// overlay had the name. The table has to be (re)fetched once the stream is
+// known, and again if the page is pointed at a different overlay.
+let optionsLoadedFor = null;
+let optionsTriedFor = null;
+let optionsTriedAt = 0;
+
 async function loadOptionLabels() {
   const url = activeStreamUrl || window.location.origin;
+  if (optionsLoadedFor === url) return;
+  // Don't hammer an overlay too old to serve it: one attempt per URL per
+  // 30s. A new URL is always tried at once, so connecting is never delayed.
+  if (optionsTriedFor === url && Date.now() - optionsTriedAt < 30000) return;
+  optionsTriedFor = url;
+  optionsTriedAt = Date.now();
   try {
     const res = await apiFetch(`${url}/api/options`);
     if (!res.ok) return;
@@ -1277,6 +1294,7 @@ async function loadOptionLabels() {
     const opts = data.options || {};
     if (!Object.keys(opts).length) return;
     OPTION_LABELS = opts;
+    optionsLoadedFor = url;
     try { localStorage.setItem('rozOptionLabels', JSON.stringify(opts)); } catch (e) {}
     if (lastSnapshot) { try { renderChat(lastSnapshot); } catch (e) {} }
     try { renderInv(); } catch (e) {}
@@ -1473,6 +1491,9 @@ async function tick() {
     const d = await res.json();
     lastSnapshot = d;
     failedPolls = 0;
+    // The stream answered, so we know where to ask for the option table and
+    // that the PIN is accepted. No-ops once it has been fetched for this URL.
+    loadOptionLabels();
     $('liveDot').classList.remove('off');
     $('hdrBackend').textContent = (d.capture || {}).backend || 'LIVE';
 
@@ -1910,6 +1931,9 @@ setInterval(tick, 2000);
   try { setChatChannel(chatChannel); } catch (e) { /* tabs not on this page */ }
 })();
 
-// The option table, once. Everything that draws an item - the inventory, the
-// item links in chat, the history log - words its random options from it.
+// The option table. Everything that draws an item - the inventory, the item
+// links in chat, the history log - words its random options from it. This
+// first call only lands when the page is served BY the overlay, where the
+// page origin is already the right host; on the published dashboard nothing
+// is connected yet, and the tick fetches it once the stream is up.
 loadOptionLabels();
