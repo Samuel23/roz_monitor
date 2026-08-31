@@ -1121,9 +1121,19 @@ function classifyItem(itemType, itid, name, location) {
   // says the item goes in is the only thing that actually decides it.
   if (loc & (LOC_COSTUME | LOC_SHADOW)) return 'costume';
 
-  // Then by where it is worn, which beats the type byte because it is
-  // unambiguous: a two-hander occupies both hands and is still a weapon.
-  if (loc & (LOC_R_HAND | LOC_L_HAND)) return 'weapon';
+  // Then by where it is worn. The RIGHT hand is what makes something a
+  // weapon: a two-hander occupies both hands (0x22) and still has it.
+  //
+  // The left hand alone does not. That is where a shield goes - Buckler is
+  // type 4 at location 0x20 - and treating either hand as a weapon was what
+  // tagged every shield WEAPON. An off-hand slot is decided by the type
+  // byte instead, which is the only thing separating a shield from a weapon
+  // held in the off hand.
+  if (loc & LOC_R_HAND) return 'weapon';
+  if (loc & LOC_L_HAND) {
+    const t = Number(itemType);
+    return (t === 5 || t === 9) ? 'weapon' : 'armor';
+  }
   if (loc && !(loc & LOC_AMMO)) return 'armor';
 
   // No equip location at all: not equipment, so the type byte is all there is
