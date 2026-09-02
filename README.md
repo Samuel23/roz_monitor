@@ -79,6 +79,8 @@
   * Device vibration and screen wake-lock (prevents phone from sleeping while farming).
 * **🔔 Discord & Telegram Push Alerts**:
   * Direct webhook & bot push notifications to your phone for Low HP (<25%), Deaths, Whispers, and Rare Drops. 👉 **[View Setup Guide](DISCORD_TELEGRAM_ALERTS.md)**
+* **🛒 Community Market Price Index** *(opt-in, off by default)*:
+  * Shops you walk past, open, or turn up with a Vending Search Scroll can feed [ROZ Market](https://samuel23.github.io/roz_market/), a shared community price index — anonymously, and only what the shop already broadcasts to everyone on the map. 👉 **[How to contribute](MARKET_CONTRIBUTING.md)**
 * **🎮 Multi-Client Support**:
   * Seamlessly switch between multiple active game clients with the multi-box fleet bar.
 * **🧩 Reads Your Own Game Client**:
