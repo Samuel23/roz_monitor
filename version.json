@@ -1,14 +1,14 @@
 {
-  "version": "1.7.2",
-  "data_version": "2026.08.31",
-  "release_date": "2026-08-31",
-  "changelog": "Equipment now says which slot it goes in.\n\n* **A shield is no longer tagged a weapon.** A Buckler sat in the Equip list wearing the same red WEAPON badge as an axe. The badge was decided by \"is it worn in either hand\", and a shield is worn in one of them.\n* **Ten tags instead of three.** `ARMOR` had been standing in for six different places you can wear something. Items are now labelled by their actual slot - **WEAPON, SHIELD, ARMOR, HEADGEAR, GARMENT, SHOES, ACCESSORY, AMMO**, plus **COSTUME** and **SHADOW**, which previously shared one badge. A two-handed weapon is still a weapon, and a dagger held in the off hand is still a weapon.\n\nThe colours have not changed - one for weapons, one for everything else you wear - so only the words are new.\n\nThis is a dashboard change. If you use the phone dashboard it is already live and this build is not needed for it; the overlay's own window carries its own copy of the dashboard, and this is how that copy gets the same fix.",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.7.2/ROZ_Overlay.exe",
-  "exe_size": 13486400,
-  "exe_sha256": "b3988c3b0a1dc2815769cd39aeca20fadadb4e37dc69ef63f500c390624ad5eb",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.7.2/ro_data.bin",
+  "version": "1.8.0",
+  "data_version": "2026.09.02",
+  "release_date": "2026-09-02",
+  "changelog": "Contribute vending prices to a community market index.\n\nNew in 1.8.0 - the overlay can now share what it sees in a market with a public price index at https://samuel23.github.io/roz_market/\n\n- **Opt in, off by default.** Nothing is uploaded until you tick 'Contribute anonymous market prices to community index' in the Setup tab. Untick it and uploading stops immediately.\n- **What is sent:** the shop's account id, its title and map position, and the items and prices it is offering. Nothing that names your character, and nothing about your own inventory, zeny or location.\n- **How it collects:** the same passive read of your own game traffic the overlay already does. It never touches the game client, and it never makes the client send anything - walking past a shop, clicking one, or using a Vending Search Scroll is all it needs.\n- Store Assistant shops now report how long their rental has left, so the index can tell a shop that expired from one that sold out.\n\nThe index shows how many people independently reported each price, and the time it was seen. It is only as good as the number of players walking markets, so if you already spend time in Prontera's market, ticking the box costs you nothing and makes it better for everyone.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.8.0/ROZ_Overlay.exe",
+  "exe_size": 13555376,
+  "exe_sha256": "76db7db3dea5eda2f23fcd821f998630e8ce18938ef55347e5a1b6ac2eaa2d05",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.8.0/ro_data.bin",
   "data_size": 16307218,
-  "data_sha256": "615abda817e8abd43efc056bcb47a253ca538a669c1f938bfb07a0291428935b",
-  "min_data_version": "2026.08.31",
-  "signature": "KqvN0s2VlJ2k5Hg4cjuF0VBnVzkp8nj3IyxOX50g3CZv/dttGvKDHMDyX5r06QhqO3cl7oHUStITX45gNcfpAQ=="
+  "data_sha256": "49a75aa5b41d5c9537b4b84babd29dd7ff487674e2ddb8c7c5f5628f2cebe64b",
+  "min_data_version": "2026.09.02",
+  "signature": "wMmJP6Gby120ze4waY/eFeTmfebyQlBlnjMzWqmBtDGrr/zAA4QYwhLVcw2S342IA6L/KHBw3j3w6iEscakFAg=="
 }
