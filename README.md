@@ -11,6 +11,26 @@
 
 ---
 
+## ❓ "Is this safe to run?"
+
+A fair question to ask of any executable that reads network traffic, so the
+short answers are here rather than 130 lines down the page.
+
+| | |
+|:---|:---|
+| **Does it touch the game?** | No. No DLL injection, no reading or writing the client's memory, no modifying its files. The capture socket is **receive-only** - nothing is ever transmitted to the game server. |
+| **What does it read, then?** | The packets the server already broadcasts to every client on your map, off your own network adapter. If your character can see it, so can the overlay; if it cannot, neither can this. |
+| **Why does Windows warn me?** | It is signed with a **self-signed** certificate, which proves the file has not been altered since it was built and vouches for nobody. A commercial certificate is a few hundred dollars a year and still has to earn its reputation before the warning stops. |
+| **Might my antivirus flag it?** | Possibly. It is a packed Python executable that opens a packet-capture device, and some heuristics dislike that combination. Windows Defender passes the current build. |
+| **So how do I check it?** | The **SHA-256 of every release is published below**, and `verify_download.ps1` in the zip checks your copy against it in one command. If a hash does not match, delete it. |
+| **Do I have to trust the binary at all?** | No. The overlay is a Python program - `python roz_overlay.py` runs the same thing from source. |
+| **What does contributing prices send?** | Only what a shop broadcasts to everyone on the map, never anything about you or your character. It is **off until you tick a box**. The full list, both columns, is on the [market site's contribute page](https://samuel23.github.io/roz_market/#/contribute). |
+
+Details, checksums and the update-signing scheme: [Security & Integrity
+Verification](#️-security--integrity-verification).
+
+---
+
 ## 📸 Screenshots & Visual Preview
 
 > [!NOTE]
