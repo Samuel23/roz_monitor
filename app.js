@@ -1085,6 +1085,7 @@ async function refreshInventory(force) {
       lastInventory = await res.json();
       lastInventoryKey = key;
       lastRenderedInvSig = '';
+      updateStoragePills();
       if (activeTab === 'loot') updateInvSource();
     }
   } catch (e) {
@@ -1095,6 +1096,17 @@ async function refreshInventory(force) {
 }
 let invSortMode = 'slot'; // 'slot', 'qty', 'name'
 let lastRenderedInvSig = '';
+
+// Random-option filter. '' is off, 'any' is "carries any roll at all", and
+// anything else is a client option index as a string. The minimum is kept as
+// typed rather than as a number so a half-typed box ('' or '-') does not
+// silently become 0 and empty the list.
+//
+// Deliberately not persisted: a filter restored from a previous visit looks
+// exactly like an inventory that failed to load, and the player has no reason
+// to suspect the dropdown three rows up.
+let optFilterIndex = '';
+let optFilterMin = '';
 
 // Which equipment slots an item can occupy, as a bitmask. A costume hat and an
 // ordinary one share the same item category, so the slot is what separates
@@ -1206,23 +1218,76 @@ function itemTag(cat, location, itemType) {
   return null;
 }
 
+// This server runs two Kafra storages, 600 slots each, and they are separate
+// containers - the same item id in both is two different piles. The server
+// labels the two alike, and the only thing telling them apart is the name it
+// draws on the storage window, which is why the overlay sends them as two
+// lists and a storage_names map rather than one merged tab.
+const STORAGE_CATS = ['storage', 'storage2', 'guild_storage'];
+
+function isStorage(cat) { return STORAGE_CATS.indexOf(cat) !== -1; }
+
+// Which storage the one Storage pill opens - the last one looked at, so
+// coming back to the tab lands where it was left rather than always on the
+// first of three.
+let lastStorageCat = 'storage';
+try {
+  const remembered = localStorage.getItem('rozStorageCat');
+  if (isStorage(remembered)) lastStorageCat = remembered;
+} catch (e) { /* private mode */ }
+
+function storageLabel(cat) {
+  if (cat === 'guild_storage') return 'Guild Storage';
+  const inv = (lastInventoryKey === (selectedClientKey || '') && lastInventory) || {};
+  const named = (inv.storage_names || {})[cat];
+  if (named) return named;
+  return cat === 'storage2' ? 'Kafra Storage 2' : 'Kafra Storage 1';
+}
+
 function setInvCategory(cat) {
   invCategory = cat;
   invSubCategory = 'all';
   lastRenderedInvSig = '';
-  ['pillMainInv', 'pillMainCart', 'pillMainStorage', 'pillMainGuildStorage', 'pillMainLoot'].forEach(id => {
+  if (isStorage(cat)) {
+    lastStorageCat = cat;
+    try { localStorage.setItem('rozStorageCat', cat); } catch (e) { /* private mode */ }
+  }
+  ['pillMainInv', 'pillMainCart', 'pillMainStorage', 'pillMainLoot'].forEach(id => {
     const el = $(id);
     if (el) el.classList.remove('active');
   });
   if (cat === 'inventory' && $('pillMainInv')) $('pillMainInv').classList.add('active');
   if (cat === 'cart' && $('pillMainCart')) $('pillMainCart').classList.add('active');
-  if (cat === 'storage' && $('pillMainStorage')) $('pillMainStorage').classList.add('active');
-  if (cat === 'guild_storage' && $('pillMainGuildStorage')) $('pillMainGuildStorage').classList.add('active');
+  if (isStorage(cat) && $('pillMainStorage')) $('pillMainStorage').classList.add('active');
   if (cat === 'loot' && $('pillMainLoot')) $('pillMainLoot').classList.add('active');
 
-  $('invTitle').textContent = cat === 'cart' ? 'Push Cart' : (cat === 'storage' ? 'Kafra Storage' : (cat === 'guild_storage' ? 'Guild Storage' : (cat === 'loot' ? 'Session Drops' : 'Character Inventory')));
+  $('invTitle').textContent = cat === 'cart' ? 'Push Cart' : (isStorage(cat) ? storageLabel(cat) : (cat === 'loot' ? 'Session Drops' : 'Character Inventory'));
+  updateStoragePills();
   updateSubPills();
   updateInvSource();
+}
+
+// The three storages, drawn only while the Storage tab is the open one. They
+// are separate containers - an item in one is not in the other - so this is a
+// choice of container and not a filter, which is why it is its own row above
+// the type filters rather than mixed in with them.
+function updateStoragePills() {
+  const wrap = $('storagePillsWrap');
+  if (!wrap) return;
+  if (!isStorage(invCategory)) {
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
+    return;
+  }
+  const inv = (lastInventoryKey === (selectedClientKey || '') && lastInventory) || {};
+  wrap.style.display = 'flex';
+  wrap.innerHTML = STORAGE_CATS.map(cat => {
+    const n = (inv[cat] || []).length;
+    const icon = cat === 'guild_storage' ? '🏰' : '🏦';
+    return `<button class="pill-btn ${invCategory === cat ? 'active' : ''}" ` +
+           `onclick="setInvCategory('${cat}')">${icon} ${storageLabel(cat)}` +
+           `${n ? ` (${n})` : ''}</button>`;
+  }).join('');
 }
 
 function setSubCategory(sub) {
@@ -1254,7 +1319,7 @@ function updateSubPills() {
       <button class="pill-btn ${invSubCategory === 'etc' ? 'active' : ''}" onclick="setSubCategory('etc')">📦 Etc</button>
       <button class="pill-btn ${invSubCategory === 'fav' ? 'active' : ''}" onclick="setSubCategory('fav')">⭐ Fav</button>
     `;
-  } else if (invCategory === 'storage' || invCategory === 'guild_storage') {
+  } else if (isStorage(invCategory)) {
     wrap.style.display = 'flex';
     wrap.innerHTML = `
       <button class="pill-btn ${invSubCategory === 'all' ? 'active' : ''}" onclick="setSubCategory('all')">🌐 All</button>
@@ -1278,8 +1343,7 @@ function updateInvSource() {
   const clientObj = (selectedClientKey && (lastSnapshot.clients || []).find(c => c.key === selectedClientKey)) || lastSnapshot;
   let raw = [];
   if (invCategory === 'cart') raw = inv.cart || clientObj.cart || [];
-  else if (invCategory === 'storage') raw = inv.storage || clientObj.storage || [];
-  else if (invCategory === 'guild_storage') raw = inv.guild_storage || clientObj.guild_storage || [];
+  else if (isStorage(invCategory)) raw = inv[invCategory] || clientObj[invCategory] || [];
   else if (invCategory === 'loot') {
     const l = inv.loot || clientObj.loot || lastSnapshot.loot || {};
     const lootList = l.items || l || [];
@@ -1299,14 +1363,23 @@ function updateInvSource() {
     $('invCapacitySummary').textContent = `${count}/100 slots (${totalItems.toLocaleString()} items${wtStr})`;
   } else if (invCategory === 'cart') {
     $('invCapacitySummary').textContent = `${count}/100 slots (${totalItems.toLocaleString()} items)`;
-  } else if (invCategory === 'storage' || invCategory === 'guild_storage') {
-    $('invCapacitySummary').textContent = `${count} slots (${totalItems.toLocaleString()} items)`;
+  } else if (isStorage(invCategory)) {
+    // Each Kafra storage holds 600 slots of its own. The overlay reports the
+    // real ceiling in storage_counts whenever one is opened; storage_slots is
+    // the same number for a storage not opened this session.
+    const cap = (inv.storage_counts || {})[invCategory] || {};
+    const max = cap.max || (invCategory === 'guild_storage' ? null : inv.storage_slots);
+    $('invCapacitySummary').textContent = max
+      ? `${count}/${max} slots (${totalItems.toLocaleString()} items)`
+      : `${count} slots (${totalItems.toLocaleString()} items)`;
   } else if (invCategory === 'loot') {
     const l = lastSnapshot.loot || {};
     const rateStr = l.per_hour ? ` · ${n(l.per_hour)}/h` : '';
     $('invCapacitySummary').textContent = `${totalItems.toLocaleString()} drops (${count} unique${rateStr})`;
   }
 
+  // The dropdown lists what this container holds, so it is rebuilt with it.
+  updateOptFilterUI();
   renderInv();
 }
 
@@ -1358,6 +1431,8 @@ async function loadOptionLabels() {
     optionsLoadedFor = url;
     try { localStorage.setItem('rozOptionLabels', JSON.stringify(opts)); } catch (e) {}
     if (lastSnapshot) { try { renderChat(lastSnapshot); } catch (e) {} }
+    // Until this lands the filter dropdown reads "Opt #170"; relabel it.
+    try { updateOptFilterUI(); } catch (e) {}
     try { renderInv(); } catch (e) {}
   } catch (e) { /* offline: the cached copy stands */ }
 }
@@ -1383,6 +1458,131 @@ function formatOption(opt) {
   });
 }
 
+// The name of an option with the number left as N: "ATK +%d" -> "ATK +N".
+// That is what the filter dropdown lists, because the dropdown names a kind
+// of roll and not one particular roll. Indices the client table has no wording
+// for still get an entry - the item shows "Opt #170" too, so the two agree.
+function optionName(index) {
+  const fmt = OPTION_LABELS[String(index)];
+  if (fmt === undefined || fmt === null || fmt === '') return `Opt #${index}`;
+  if (fmt.indexOf('%') < 0) return fmt;
+  return fmt.replace(/%(.)/g, (m, c) => {
+    if (c === '%') return '%';
+    if (c === 'd' || c === 'i' || c === 'u' || c === 's') return 'N';
+    return m;
+  });
+}
+
+// Every option on one item as one lowercase haystack, so the plain search box
+// finds "crit" and "casting" as well as item names. Built only when there is
+// a query to match: a 600-slot storage would otherwise format a few thousand
+// strings on every one-second tick for nothing.
+function optionHaystack(item) {
+  const opts = item.options || [];
+  if (!opts.length) return '';
+  return opts.map(o => formatOption(o)).join(' ').toLowerCase();
+}
+
+// index: 'any', or a client option index (string or number).
+// min:   null for no floor, else the smallest roll worth showing.
+//
+// Options with no number in them - "Enchant Armor with Neutral-Property" is
+// the whole bonus - carry value 0 and so drop out once a floor is set. That is
+// the right answer: a floor is a question about a number.
+function itemMatchesOption(item, index, min) {
+  const opts = item.options || [];
+  if (!opts.length) return false;
+  const floor = (min === null || min === undefined || min === '' || isNaN(Number(min)))
+    ? null : Number(min);
+  return opts.some(o => {
+    if (index !== 'any' && String(o.index) !== String(index)) return false;
+    if (floor !== null && (Number(o.value) || 0) < floor) return false;
+    return true;
+  });
+}
+
+// Rebuild the dropdown from what is actually in the open container. Counts are
+// of items, not of rolls, so an item that rolled CRI twice still counts once -
+// the number has to match the number of rows the pick will leave behind.
+function updateOptFilterUI() {
+  const wrap = $('optFilterWrap');
+  const sel = $('optFilterSel');
+  if (!wrap || !sel) return;
+
+  // Session Drops are tallied by item id and carry no rolls at all, so the row
+  // would be a dropdown with nothing in it.
+  if (invCategory === 'loot') {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'flex';
+
+  const counts = {};
+  let withAny = 0;
+  for (const it of currentInv) {
+    const opts = it.options || [];
+    if (!opts.length) continue;
+    withAny++;
+    const seen = {};
+    for (const o of opts) {
+      const k = String(o.index);
+      if (seen[k]) continue;
+      seen[k] = 1;
+      counts[k] = (counts[k] || 0) + 1;
+    }
+  }
+
+  const keys = Object.keys(counts).sort((a, b) => {
+    if (counts[b] !== counts[a]) return counts[b] - counts[a];
+    return optionName(a).localeCompare(optionName(b));
+  });
+
+  let html = `<option value="">All items (no option filter)</option>` +
+             `<option value="any">&#10024; Any random option${withAny ? ` (${withAny})` : ''}</option>`;
+  html += keys.map(k =>
+    `<option value="${escapeHtml(k)}">${escapeHtml(optionName(k))} (${counts[k]})</option>`
+  ).join('');
+  // A pick made in one container is kept when the player walks it over to
+  // another - looking for the same roll across bag, cart and storage is the
+  // whole point - so an index this container happens not to hold still needs
+  // a row to sit on, or the select would silently snap back to "All items".
+  if (optFilterIndex && optFilterIndex !== 'any' && !counts[optFilterIndex]) {
+    html += `<option value="${escapeHtml(optFilterIndex)}">${escapeHtml(optionName(optFilterIndex))} (0)</option>`;
+  }
+
+  const sig = `${html}|${optFilterIndex}`;
+  if (sel._sig !== sig) {
+    sel._sig = sig;
+    sel.innerHTML = html;
+  }
+  sel.value = optFilterIndex;
+
+  const min = $('optFilterMin');
+  if (min) min.disabled = !optFilterIndex;
+  const clear = $('optFilterClear');
+  if (clear) clear.classList.toggle('active', !!optFilterIndex);
+}
+
+function setOptFilter() {
+  const sel = $('optFilterSel');
+  const min = $('optFilterMin');
+  optFilterIndex = sel ? (sel.value || '') : '';
+  optFilterMin = min ? (min.value || '') : '';
+  lastRenderedInvSig = '';
+  updateOptFilterUI();
+  renderInv();
+}
+
+function clearOptFilter() {
+  optFilterIndex = '';
+  optFilterMin = '';
+  const min = $('optFilterMin');
+  if (min) min.value = '';
+  lastRenderedInvSig = '';
+  updateOptFilterUI();
+  renderInv();
+}
+
 function renderInv() {
   const container = $('invTable');
   const scrollWrap = $('invScrollContainer');
@@ -1399,7 +1599,7 @@ function renderInv() {
       if (invSubCategory === 'etc') return cat === 'etc' || cat === 'card';
       if (invSubCategory === 'fav') return item.fav === 1 || item.favorite;
       return true;
-    } else if (invCategory === 'storage' || invCategory === 'guild_storage') {
+    } else if (isStorage(invCategory)) {
       if (invSubCategory === 'usable') return cat === 'usable';
       if (invSubCategory === 'weapon') return cat === 'weapon';
       if (invSubCategory === 'armor') return cat === 'armor';
@@ -1411,9 +1611,19 @@ function renderInv() {
     return true;
   });
 
-  // Filter by Search Query
+  // Filter by Search Query. The rolls are part of the haystack: typing "crit"
+  // or "casting" is how a player asks for the one piece in the container that
+  // has it, and the name never says.
   if (query) {
-    list = list.filter(i => (i.name || `item#${i.itid}`).toLowerCase().includes(query) || String(i.itid).includes(query));
+    list = list.filter(i => (i.name || `item#${i.itid}`).toLowerCase().includes(query)
+                         || String(i.itid).includes(query)
+                         || optionHaystack(i).includes(query));
+  }
+
+  // Filter by random option. Not applied to Session Drops, which are a tally
+  // of item ids and carry no rolls to match.
+  if (optFilterIndex && invCategory !== 'loot') {
+    list = list.filter(i => itemMatchesOption(i, optFilterIndex, optFilterMin));
   }
 
   // Sort
@@ -1427,7 +1637,7 @@ function renderInv() {
   }
 
   // Signature check to prevent redundant redraws
-  const sig = `${invCategory}_${invSubCategory}_${invSortMode}_${query}_${list.map(i => `${i.itid}:${i.count}:${i.slot}:${i.refine || 0}:${(i.cards || []).join('-')}:${(i.options || []).length}`).join(',')}`;
+  const sig = `${invCategory}_${invSubCategory}_${invSortMode}_${query}_${optFilterIndex}_${optFilterMin}_${list.map(i => `${i.itid}:${i.count}:${i.slot}:${i.refine || 0}:${(i.cards || []).join('-')}:${(i.options || []).length}`).join(',')}`;
   if (sig === lastRenderedInvSig) return;
   lastRenderedInvSig = sig;
 
@@ -1435,7 +1645,14 @@ function renderInv() {
   const prevScroll = scrollWrap ? scrollWrap.scrollTop : 0;
 
   if (!list.length) {
-    container.innerHTML = `<tr><td colspan="3" style="color:var(--dim);text-align:center;padding:24px 0;">No items found in this section</td></tr>`;
+    // Say which filter emptied it. An option filter survives a walk to another
+    // container, so "no items" on its own reads as a storage that failed to
+    // load rather than as a pick that matched nothing here.
+    const why = (optFilterIndex && invCategory !== 'loot')
+      ? `No item here carries ${escapeHtml(optFilterIndex === 'any' ? 'a random option' : optionName(optFilterIndex))}` +
+        `${optFilterMin !== '' && !isNaN(Number(optFilterMin)) ? ` at +${Number(optFilterMin)} or better` : ''}`
+      : 'No items found in this section';
+    container.innerHTML = `<tr><td colspan="3" style="color:var(--dim);text-align:center;padding:24px 0;">${why}</td></tr>`;
     return;
   }
 

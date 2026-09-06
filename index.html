@@ -186,10 +186,14 @@
     <div style="display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch;">
       <button class="pill-btn active" id="pillMainInv" onclick="setInvCategory('inventory')">🎒 Inventory</button>
       <button class="pill-btn" id="pillMainCart" onclick="setInvCategory('cart')">🛒 Push Cart</button>
-      <button class="pill-btn" id="pillMainStorage" onclick="setInvCategory('storage')">🏦 Storage</button>
-      <button class="pill-btn" id="pillMainGuildStorage" onclick="setInvCategory('guild_storage')">🏰 Guild Storage</button>
+      <button class="pill-btn" id="pillMainStorage" onclick="setInvCategory(lastStorageCat)">🏦 Storage</button>
       <button class="pill-btn" id="pillMainLoot" onclick="setInvCategory('loot')">📦 Session Drops</button>
     </div>
+
+    <!-- Which storage. Three separate containers sit behind the one Storage
+         pill: two Kafra storages of 600 slots each and the guild's. Shown only
+         while one of them is the open category. -->
+    <div id="storagePillsWrap" style="display: none; gap: 4px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1f2433;"></div>
 
     <!-- Sub-Category Filter Pills (Dynamically populated for Inventory/Storage) -->
     <div id="subPillsWrap" style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1f2433;"></div>
@@ -203,12 +207,24 @@
 
     <!-- Search & Sort Controls -->
     <div style="display: flex; gap: 6px; margin-bottom: 8px; align-items: center;">
-      <input type="text" id="invSearch" class="search-input" placeholder="🔍 Search items in list…" style="margin-bottom: 0;" oninput="renderInv()">
+      <input type="text" id="invSearch" class="search-input" placeholder="🔍 Search name, ID or option…" style="margin-bottom: 0;" oninput="renderInv()">
       <div style="display: flex; gap: 3px; flex-shrink: 0;">
         <button class="pill-btn active" id="sortSlotBtn" onclick="setSortMode('slot')" title="In-Game Slot Order"># Slot</button>
         <button class="pill-btn" id="sortQtyBtn" onclick="setSortMode('qty')" title="Highest Quantity">Qty ▾</button>
         <button class="pill-btn" id="sortNameBtn" onclick="setSortMode('name')" title="Alphabetical">A-Z</button>
       </div>
+    </div>
+
+    <!-- Random-option filter. The text box above searches names; this row
+         searches the rolls, which is the only way to find "the shirt with
+         CRI on it" in a 600-slot storage where every entry is called the
+         same thing. The dropdown lists the options actually present in the
+         open container, so an empty pick is never offered. -->
+    <div id="optFilterWrap" style="display:none; gap:6px; margin-bottom:8px; align-items:center; flex-wrap:wrap;">
+      <span style="font-size:10px;font-weight:700;color:var(--acc);flex-shrink:0;">&#10024; Option</span>
+      <select id="optFilterSel" class="search-input" style="margin-bottom:0;flex:1;min-width:150px;" onchange="setOptFilter()"></select>
+      <input type="number" id="optFilterMin" class="search-input" min="0" step="1" placeholder="min" title="Only rolls at or above this value" style="margin-bottom:0;width:78px;flex-shrink:0;" oninput="setOptFilter()">
+      <button class="pill-btn" id="optFilterClear" onclick="clearOptFilter()" title="Clear the option filter">&#10005;</button>
     </div>
 
     <!-- Scrollable Items Table with Persistent Scroll -->
