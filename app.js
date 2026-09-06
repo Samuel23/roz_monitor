@@ -1097,16 +1097,20 @@ async function refreshInventory(force) {
 let invSortMode = 'slot'; // 'slot', 'qty', 'name'
 let lastRenderedInvSig = '';
 
-// Random-option filter. '' is off, 'any' is "carries any roll at all", and
-// anything else is a client option index as a string. The minimum is kept as
-// typed rather than as a number so a half-typed box ('' or '-') does not
-// silently become 0 and empty the list.
+// Random-option filter: up to three asks at once, ANDed. Each is
+// { index, min }, where index is 'any' ("carries a roll at all") or a client
+// option index as a string, and min is kept as *typed* rather than as a
+// number so a half-typed box ('' or '-') does not silently become 0.
+//
+// Three because that is the question players actually ask - "CRI and ATK on
+// one shirt" - and because past three the row eats the phone screen the list
+// is supposed to be on.
 //
 // Deliberately not persisted: a filter restored from a previous visit looks
 // exactly like an inventory that failed to load, and the player has no reason
-// to suspect the dropdown three rows up.
-let optFilterIndex = '';
-let optFilterMin = '';
+// to suspect the dropdowns three rows up.
+const MAX_OPT_FILTERS = 3;
+let optFilters = [];
 
 // Which equipment slots an item can occupy, as a bitmask. A costume hat and an
 // ordinary one share the same item category, so the slot is what separates
@@ -1501,22 +1505,55 @@ function itemMatchesOption(item, index, min) {
   });
 }
 
-// Rebuild the dropdown from what is actually in the open container. Counts are
-// of items, not of rolls, so an item that rolled CRI twice still counts once -
-// the number has to match the number of rows the pick will leave behind.
-function updateOptFilterUI() {
-  const wrap = $('optFilterWrap');
-  const sel = $('optFilterSel');
-  if (!wrap || !sel) return;
+// Every ask satisfied, each by a roll of its own.
+//
+// Distinct rolls is the part that is easy to get wrong. Matching each ask
+// against "some roll" independently means one CRI +5 answers both "CRI" and
+// "CRI at least 3", so a search for two CRI rolls would find items carrying
+// one. An item has at most five rolls and there are at most three asks, so
+// the assignment is searched exhaustively rather than greedily - greedy
+// spends the only ATK +30 on the "any option" ask and then reports no match.
+//
+// Order is never a question: the asks are matched against the rolls in
+// whatever slots they landed in, which is why asking for CRI then ATK finds
+// exactly the items that asking for ATK then CRI finds.
+function itemMatchesOptions(item, filters) {
+  const asks = (filters || []).filter(f => f && f.index);
+  if (!asks.length) return true;
+  const opts = item.options || [];
+  if (asks.length > opts.length) return false;
 
-  // Session Drops are tallied by item id and carry no rolls at all, so the row
-  // would be a dropdown with nothing in it.
-  if (invCategory === 'loot') {
-    wrap.style.display = 'none';
-    return;
-  }
-  wrap.style.display = 'flex';
+  const fits = (ask, o) => {
+    if (ask.index !== 'any' && String(o.index) !== String(ask.index)) return false;
+    const floor = (ask.min === '' || ask.min === null || ask.min === undefined
+                   || isNaN(Number(ask.min))) ? null : Number(ask.min);
+    return floor === null || (Number(o.value) || 0) >= floor;
+  };
 
+  const used = [];
+  const assign = (at) => {
+    if (at === asks.length) return true;
+    for (let i = 0; i < opts.length; i++) {
+      if (used[i] || !fits(asks[at], opts[i])) continue;
+      used[i] = true;
+      if (assign(at + 1)) return true;
+      used[i] = false;
+    }
+    return false;
+  };
+  return assign(0);
+}
+
+// One ask. Kept because it is the primitive a row is built from, and the one
+// worth testing on its own.
+function itemMatchesOption(item, index, min) {
+  return itemMatchesOptions(item, [{ index: index, min: min }]);
+}
+
+// How many items in the open container carry each option, counted by item and
+// not by roll - an item that rolled CRI twice counts once, or the number would
+// not match the rows the pick leaves behind.
+function optionCounts() {
   const counts = {};
   let withAny = 0;
   for (const it of currentInv) {
@@ -1531,56 +1568,162 @@ function updateOptFilterUI() {
       counts[k] = (counts[k] || 0) + 1;
     }
   }
+  return { counts: counts, withAny: withAny };
+}
 
+// The <option> list every row's dropdown shares, sorted by how many items
+// carry each - the useful asks belong at the top of a phone-sized list.
+function optionChoices(counts, withAny, extra) {
   const keys = Object.keys(counts).sort((a, b) => {
     if (counts[b] !== counts[a]) return counts[b] - counts[a];
     return optionName(a).localeCompare(optionName(b));
   });
-
-  let html = `<option value="">All items (no option filter)</option>` +
-             `<option value="any">&#10024; Any random option${withAny ? ` (${withAny})` : ''}</option>`;
+  let html = '<option value="any">&#10024; Any random option'
+           + (withAny ? ' (' + withAny + ')' : '') + '</option>';
   html += keys.map(k =>
-    `<option value="${escapeHtml(k)}">${escapeHtml(optionName(k))} (${counts[k]})</option>`
-  ).join('');
+    '<option value="' + escapeHtml(k) + '">' + escapeHtml(optionName(k))
+    + ' (' + counts[k] + ')</option>').join('');
   // A pick made in one container is kept when the player walks it over to
   // another - looking for the same roll across bag, cart and storage is the
   // whole point - so an index this container happens not to hold still needs
-  // a row to sit on, or the select would silently snap back to "All items".
-  if (optFilterIndex && optFilterIndex !== 'any' && !counts[optFilterIndex]) {
-    html += `<option value="${escapeHtml(optFilterIndex)}">${escapeHtml(optionName(optFilterIndex))} (0)</option>`;
+  // a row to sit on, or the select would snap to the first entry and quietly
+  // answer a question nobody asked.
+  for (const k of extra || []) {
+    if (k && k !== 'any' && !counts[k]) {
+      html += '<option value="' + escapeHtml(k) + '">' + escapeHtml(optionName(k))
+            + ' (0)</option>';
+    }
   }
-
-  const sig = `${html}|${optFilterIndex}`;
-  if (sel._sig !== sig) {
-    sel._sig = sig;
-    sel.innerHTML = html;
-  }
-  sel.value = optFilterIndex;
-
-  const min = $('optFilterMin');
-  if (min) min.disabled = !optFilterIndex;
-  const clear = $('optFilterClear');
-  if (clear) clear.classList.toggle('active', !!optFilterIndex);
+  return html;
 }
 
-function setOptFilter() {
-  const sel = $('optFilterSel');
-  const min = $('optFilterMin');
-  optFilterIndex = sel ? (sel.value || '') : '';
-  optFilterMin = min ? (min.value || '') : '';
+// Draw the rows. Structure only: the minimum boxes are filled in afterwards
+// by value rather than by markup, because rebuilding the row a player is
+// typing a number into takes the caret away after the first digit.
+function updateOptFilterUI() {
+  const wrap = $('optFilterWrap');
+  if (!wrap) return;
+
+  // Session Drops are tallied by item id and carry no rolls at all, so there
+  // is nothing here to ask about.
+  if (invCategory === 'loot') {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'flex';
+
+  const tally = optionCounts();
+  const choices = optionChoices(tally.counts, tally.withAny,
+                                optFilters.map(f => f.index));
+  const ROW = 'display:flex;gap:6px;align-items:center;';
+  const TAG = 'font-size:10px;font-weight:700;color:var(--acc);flex-shrink:0;width:20px;';
+  const SEL = 'margin-bottom:0;flex:1;min-width:110px;';
+  const NUM = 'margin-bottom:0;width:72px;flex-shrink:0;';
+
+  let html = optFilters.map((f, at) =>
+    '<div style="' + ROW + '">'
+    + '<span style="' + TAG + '">&#10024;' + (optFilters.length > 1 ? (at + 1) : '') + '</span>'
+    + '<select class="search-input js-opt-sel" data-at="' + at + '" style="' + SEL + '"'
+    + ' onchange="setOptRow(' + at + ')">' + choices + '</select>'
+    + '<input type="number" class="search-input js-opt-min" data-at="' + at + '"'
+    + ' min="0" step="1" placeholder="min" title="Only rolls at or above this value"'
+    + ' style="' + NUM + '" oninput="syncOptMin(' + at + ')">'
+    + '<button class="pill-btn" onclick="removeOptRow(' + at + ')"'
+    + ' title="Remove this option">&#10005;</button>'
+    + '</div>').join('');
+
+  // The trailing line: somewhere to add the next ask, and - once there is
+  // anything to clear - one button that clears all of them.
+  const canAdd = optFilters.length < MAX_OPT_FILTERS;
+  html += '<div style="' + ROW + '">'
+        + '<span style="' + TAG + '">' + (canAdd ? '&#65291;' : '') + '</span>'
+        + (canAdd
+            ? '<select class="search-input" id="optFilterAdd" style="' + SEL + '"'
+              + ' onchange="addOptRow()"><option value="">'
+              + (optFilters.length ? 'Add another option&hellip;'
+                                   : 'Filter by random option&hellip;')
+              + '</option>' + choices + '</select>'
+            : '<span style="flex:1;font-size:10px;color:var(--dim);">'
+              + 'Three at once is the most you can ask for.</span>')
+        + (optFilters.length
+            ? '<button class="pill-btn active" onclick="clearOptFilter()"'
+              + ' title="Clear every option filter">&#10005; All</button>'
+            : '')
+        + '</div>';
+
+  // Rebuild only when the shape changed. The minimum boxes are deliberately
+  // not part of that signature - see above.
+  if (wrap._sig !== html) {
+    wrap._sig = html;
+    wrap.innerHTML = html;
+  }
+  // Selects carry their pick as a property, not as a `selected` attribute, so
+  // the shared list of choices stays one string for every row.
+  wrap.querySelectorAll('.js-opt-sel').forEach(sel => {
+    const f = optFilters[Number(sel.dataset.at)];
+    const want = f ? f.index : '';
+    if (sel.value !== want) sel.value = want;
+  });
+  wrap.querySelectorAll('.js-opt-min').forEach(inp => {
+    const f = optFilters[Number(inp.dataset.at)];
+    const want = f ? f.min : '';
+    if (inp.value !== want) inp.value = want;
+  });
+}
+
+// Changing which option a row asks for.
+function setOptRow(at) {
+  const sel = document.querySelector('.js-opt-sel[data-at="' + at + '"]');
+  if (!sel || !optFilters[at]) return;
+  optFilters[at].index = sel.value || 'any';
+  lastRenderedInvSig = '';
+  updateOptFilterUI();
+  renderInv();
+}
+
+// Typing a minimum. Deliberately does NOT redraw the rows: the box being
+// typed into is one of them, and rebuilding it loses the caret after a digit.
+function syncOptMin(at) {
+  const inp = document.querySelector('.js-opt-min[data-at="' + at + '"]');
+  if (!inp || !optFilters[at]) return;
+  optFilters[at].min = inp.value || '';
+  lastRenderedInvSig = '';
+  renderInv();
+}
+
+function addOptRow() {
+  const sel = $('optFilterAdd');
+  if (!sel || !sel.value) return;
+  if (optFilters.length >= MAX_OPT_FILTERS) return;
+  optFilters.push({ index: sel.value, min: '' });
+  lastRenderedInvSig = '';
+  updateOptFilterUI();
+  renderInv();
+}
+
+function removeOptRow(at) {
+  optFilters.splice(at, 1);
   lastRenderedInvSig = '';
   updateOptFilterUI();
   renderInv();
 }
 
 function clearOptFilter() {
-  optFilterIndex = '';
-  optFilterMin = '';
-  const min = $('optFilterMin');
-  if (min) min.value = '';
+  optFilters = [];
   lastRenderedInvSig = '';
   updateOptFilterUI();
   renderInv();
+}
+
+// What the asks read as, for the line shown when they match nothing. Joined
+// with "and" because that is what they are - every one has to be satisfied.
+function optFilterSummary() {
+  return optFilters.map(f => {
+    const name = f.index === 'any' ? 'a random option' : optionName(f.index);
+    const floor = (f.min !== '' && !isNaN(Number(f.min)))
+      ? ' at +' + Number(f.min) + ' or better' : '';
+    return name + floor;
+  }).join(' and ');
 }
 
 function renderInv() {
@@ -1620,10 +1763,11 @@ function renderInv() {
                          || optionHaystack(i).includes(query));
   }
 
-  // Filter by random option. Not applied to Session Drops, which are a tally
-  // of item ids and carry no rolls to match.
-  if (optFilterIndex && invCategory !== 'loot') {
-    list = list.filter(i => itemMatchesOption(i, optFilterIndex, optFilterMin));
+  // Filter by random option - up to three asks, all of which must hold, each
+  // against a roll of its own and in any slot order. Not applied to Session
+  // Drops, which are a tally of item ids and carry no rolls to match.
+  if (optFilters.length && invCategory !== 'loot') {
+    list = list.filter(i => itemMatchesOptions(i, optFilters));
   }
 
   // Sort
@@ -1637,7 +1781,7 @@ function renderInv() {
   }
 
   // Signature check to prevent redundant redraws
-  const sig = `${invCategory}_${invSubCategory}_${invSortMode}_${query}_${optFilterIndex}_${optFilterMin}_${list.map(i => `${i.itid}:${i.count}:${i.slot}:${i.refine || 0}:${(i.cards || []).join('-')}:${(i.options || []).length}`).join(',')}`;
+  const sig = `${invCategory}_${invSubCategory}_${invSortMode}_${query}_${optFilters.map(f => f.index + ':' + f.min).join('+')}_${list.map(i => `${i.itid}:${i.count}:${i.slot}:${i.refine || 0}:${(i.cards || []).join('-')}:${(i.options || []).length}`).join(',')}`;
   if (sig === lastRenderedInvSig) return;
   lastRenderedInvSig = sig;
 
@@ -1648,9 +1792,8 @@ function renderInv() {
     // Say which filter emptied it. An option filter survives a walk to another
     // container, so "no items" on its own reads as a storage that failed to
     // load rather than as a pick that matched nothing here.
-    const why = (optFilterIndex && invCategory !== 'loot')
-      ? `No item here carries ${escapeHtml(optFilterIndex === 'any' ? 'a random option' : optionName(optFilterIndex))}` +
-        `${optFilterMin !== '' && !isNaN(Number(optFilterMin)) ? ` at +${Number(optFilterMin)} or better` : ''}`
+    const why = (optFilters.length && invCategory !== 'loot')
+      ? `No item here carries ${escapeHtml(optFilterSummary())}`
       : 'No items found in this section';
     container.innerHTML = `<tr><td colspan="3" style="color:var(--dim);text-align:center;padding:24px 0;">${why}</td></tr>`;
     return;
