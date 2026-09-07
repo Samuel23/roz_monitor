@@ -1,14 +1,14 @@
 {
-  "version": "1.8.0",
-  "data_version": "2026.09.02",
-  "release_date": "2026-09-02",
-  "changelog": "Contribute vending prices to a community market index.\n\nNew in 1.8.0 - the overlay can now share what it sees in a market with a public price index at https://samuel23.github.io/roz_market/\n\n- **Opt in, off by default.** Nothing is uploaded until you tick 'Contribute anonymous market prices to community index' in the Setup tab. Untick it and uploading stops immediately.\n- **What is sent:** the shop's account id, its title and map position, and the items and prices it is offering. Nothing that names your character, and nothing about your own inventory, zeny or location.\n- **How it collects:** the same passive read of your own game traffic the overlay already does. It never touches the game client, and it never makes the client send anything - walking past a shop, clicking one, or using a Vending Search Scroll is all it needs.\n- Store Assistant shops now report how long their rental has left, so the index can tell a shop that expired from one that sold out.\n\nThe index shows how many people independently reported each price, and the time it was seen. It is only as good as the number of players walking markets, so if you already spend time in Prontera's market, ticking the box costs you nothing and makes it better for everyone.",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.8.0/ROZ_Overlay.exe",
-  "exe_size": 13555376,
-  "exe_sha256": "76db7db3dea5eda2f23fcd821f998630e8ce18938ef55347e5a1b6ac2eaa2d05",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.8.0/ro_data.bin",
-  "data_size": 16307218,
-  "data_sha256": "49a75aa5b41d5c9537b4b84babd29dd7ff487674e2ddb8c7c5f5628f2cebe64b",
-  "min_data_version": "2026.09.02",
-  "signature": "wMmJP6Gby120ze4waY/eFeTmfebyQlBlnjMzWqmBtDGrr/zAA4QYwhLVcw2S342IA6L/KHBw3j3w6iEscakFAg=="
+  "version": "1.9.0",
+  "data_version": "2026.09.07",
+  "release_date": "2026-09-07",
+  "changelog": "Three separate storages, searching your bags by what an item rolled, and a market index that stops showing shops that are not there.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.0/ROZ_Overlay.exe",
+  "exe_size": 13725536,
+  "exe_sha256": "f31026210d771e89abf804ca89f6b710b8ca7e8be0639c3cb840b31b0408cf2e",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.0/ro_data.bin",
+  "data_size": 16307839,
+  "data_sha256": "8848b423c2554eee9eea037ac46ec73467ed37968ab4a7d37ddef05439a524a4",
+  "min_data_version": "2026.09.07",
+  "signature": "0A3SaKjRiYXFgiEqiP/W9AWjT26YUjbHox0T3gRSULzWdp1rxEOlnVMWBPiM8CKQ2oJrUFoLNV5klEh7dfO+Ag=="
 }
