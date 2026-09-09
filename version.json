@@ -1,14 +1,14 @@
 {
-  "version": "1.9.0",
-  "data_version": "2026.09.07",
-  "release_date": "2026-09-07",
-  "changelog": "Three separate storages, searching your bags by what an item rolled, and a market index that stops showing shops that are not there.",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.0/ROZ_Overlay.exe",
-  "exe_size": 13725536,
-  "exe_sha256": "f31026210d771e89abf804ca89f6b710b8ca7e8be0639c3cb840b31b0408cf2e",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.0/ro_data.bin",
-  "data_size": 16307839,
-  "data_sha256": "8848b423c2554eee9eea037ac46ec73467ed37968ab4a7d37ddef05439a524a4",
-  "min_data_version": "2026.09.07",
-  "signature": "0A3SaKjRiYXFgiEqiP/W9AWjT26YUjbHox0T3gRSULzWdp1rxEOlnVMWBPiM8CKQ2oJrUFoLNV5klEh7dfO+Ag=="
+  "version": "1.9.1",
+  "data_version": "2026.09.09",
+  "release_date": "2026-09-09",
+  "changelog": "Fixes the phone dashboard losing its connection mid-session and failing to find the PC again after the browser is closed and reopened.\n\nThe overlay now keeps a connection open for the dashboard instead of opening a new one for every reading. Opening one per reading, several times a second for hours, is what wore out the remote tunnel and took the phone offline while the PC carried on running normally.\n\nOn the phone, every request now has a deadline and only one is in flight at a time, so a slow mobile connection can no longer stall the page into a frozen snapshot. Waking the screen or rejoining a network refreshes immediately instead of waiting out a timer.\n\nThe pairing link is now read once and remembered. Reopening it from a bookmark or history used to send the phone back to the address the PC was at when the QR code was drawn, which is rarely where it still is.\n\nThe PC now keeps telling the relay where it is on a slow heartbeat rather than going quiet after a few minutes, so a phone that has been away for hours can still find it with nothing but the room code and PIN.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.1/ROZ_Overlay.exe",
+  "exe_size": 13733088,
+  "exe_sha256": "d5fb5bb668a3178846f94a847b63b7f940152a89dce6674a0173afb80f189a3a",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.1/ro_data.bin",
+  "data_size": 16307840,
+  "data_sha256": "befc853606f4a79180acc074b60573b387720b967e3d98442fb9fe34c98c8a52",
+  "min_data_version": "2026.09.09",
+  "signature": "yaY1EuY+LDV6e2uG/x8TSwdFSnhVKtxmP6VJoI8Qw6EOVyUu/nzkqi2IolyAsCjX59VlwzXcyrKEGhvsjXxIAA=="
 }

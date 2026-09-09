@@ -1,6 +1,6 @@
 /**
  * ROZ Live Monitor - Client Application Logic
- * Version: 1.3.1
+ * Version: 1.8.1
  */
 
 const $ = id => document.getElementById(id);
@@ -38,59 +38,112 @@ const escapeHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g,
   c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 
 // --- Pairing Management ---
-function getRoom() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const r = urlParams.get('room') || urlParams.get('r');
-  if (r) {
-    localStorage.setItem('roz_room', r.toUpperCase());
-    return r.toUpperCase();
+//
+// The pairing link is read exactly once, at load, and then wiped from the
+// address bar. It used to be re-read on every call, which is why a phone that
+// reopened the QR link from its history could not get back: `?stream=` still
+// held the tunnel hostname from the day it was scanned, a free tunnel gets a
+// new hostname every time it reconnects, and getStreamParam wrote that dead
+// address back over the live one discovery had just found. The page went
+// looking for a PC at an address that had not existed for hours, every time.
+function consumePairingParams() {
+  let q, changed = false;
+  try {
+    q = new URLSearchParams(window.location.search);
+  } catch (e) { return; }
+  const hash = (() => {
+    try { return new URLSearchParams((window.location.hash || '').replace(/^#/, '')); }
+    catch (e) { return new URLSearchParams(); }
+  })();
+
+  const take = (keys, store, upper) => {
+    for (const k of keys) {
+      const v = hash.get(k) || q.get(k);
+      if (v) {
+        localStorage.setItem(store, upper ? v.toUpperCase() : v);
+        for (const kk of keys) { if (q.has(kk)) { q.delete(kk); changed = true; } }
+        return;
+      }
+    }
+  };
+  // The PIN first: it is the one that must not survive in the address bar.
+  const hadRoom = (localStorage.getItem('roz_room') || '').toUpperCase();
+  take(['pin', 'p'], 'roz_pin', true);
+  take(['room', 'r'], 'roz_room', true);
+
+  // The link's `stream` is only a hint - somewhere to try before asking the
+  // relay - and it is frozen at the moment the QR was drawn. A phone reopening
+  // that link a day later must not let it overwrite the address discovery
+  // found since, which is the live one. It wins only when there is nothing
+  // better: a first pairing, or a link for a different PC than the one this
+  // phone was watching.
+  const newRoom = (localStorage.getItem('roz_room') || '').toUpperCase();
+  const otherPc = hadRoom && newRoom && hadRoom !== newRoom;
+  if (otherPc) localStorage.removeItem('roz_stream_url');
+  if (otherPc || !localStorage.getItem('roz_stream_url')) {
+    take(['stream', 's', 'url'], 'roz_stream_url', false);
+  } else {
+    for (const k of ['stream', 's', 'url']) {
+      if (q.has(k)) { q.delete(k); changed = true; }
+    }
   }
+
+  if (changed || window.location.hash) {
+    try {
+      const qs = q.toString();
+      history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+    } catch (e) { /* older browser: the values are stored either way */ }
+  }
+}
+// A throw here would take the whole script down before anything is drawn, and
+// this is the first statement that runs. Private-browsing modes make every
+// localStorage call throw; a dashboard with no memory between loads is worth
+// far more than a blank page.
+try { consumePairingParams(); } catch (e) { /* nothing saved: pair by hand */ }
+
+function getRoom() {
   return (localStorage.getItem('roz_room') || '').toUpperCase();
 }
 
 // The PIN travels in the URL *fragment* (#pin=...), which browsers never put
 // on the wire: it stays out of the tunnel provider's access logs and out of
 // the Referer header of every request this page makes afterwards. A `?pin=`
-// query is still read so links made by an older overlay keep working, and
-// either way it is moved into localStorage and scrubbed from the address bar
-// so it does not sit in the phone's history or get shared with a screenshot.
+// query is still read so links made by an older overlay keep working. Either
+// way consumePairingParams has already moved it into localStorage and scrubbed
+// it from the address bar, so it does not sit in the phone's history or get
+// shared with a screenshot.
 function getPin() {
-  const fromUrl = () => {
-    const hash = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
-    const q = new URLSearchParams(window.location.search);
-    return hash.get('pin') || hash.get('p') || q.get('pin') || q.get('p');
-  };
-  const p = fromUrl();
-  if (p) {
-    localStorage.setItem('roz_pin', p.toUpperCase());
-    try {
-      const q = new URLSearchParams(window.location.search);
-      q.delete('pin'); q.delete('p');
-      const qs = q.toString();
-      history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
-    } catch (e) { /* older browser: the value is stored either way */ }
-    return p.toUpperCase();
-  }
   return (localStorage.getItem('roz_pin') || '').toUpperCase();
 }
 
 // Every call to the overlay goes through here. The PIN is sent as a bearer
 // token and never as a query parameter - see getPin above for why.
+//
+// And every call gets a deadline. Without one, a request that left the phone
+// over a stalled tunnel hung until the browser's own timeout - tens of
+// seconds - while the 2s poll kept firing more behind it. Six of those and the
+// browser's per-host connection limit is used up, so nothing else on the page
+// can load either: the map stops, the inventory stops, and the dashboard sits
+// there looking connected with a two-minute-old snapshot on it. A poll is
+// worthless by the time the next one is due, so it may as well be abandoned.
+const API_TIMEOUT_MS = 8000;
+
 function apiFetch(url, opts) {
   const pin = getPin();
   const o = Object.assign({}, opts || {});
   o.headers = Object.assign({}, o.headers || {});
   if (pin) o.headers['Authorization'] = 'Bearer ' + pin;
+  if (!o.signal) {
+    try { o.signal = AbortSignal.timeout(API_TIMEOUT_MS); }
+    catch (e) { /* no AbortSignal.timeout: the browser's own limit stands */ }
+  }
   return fetch(url, o);
 }
 
+// The last address this PC was actually reachable at - either the one the
+// pairing link carried or, more usefully, the one relay discovery last
+// confirmed. Never the address bar: see consumePairingParams.
 function getStreamParam() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const s = urlParams.get('stream') || urlParams.get('s') || urlParams.get('url');
-  if (s) {
-    localStorage.setItem('roz_stream_url', s);
-    return s;
-  }
   return localStorage.getItem('roz_stream_url') || '';
 }
 
@@ -193,22 +246,31 @@ async function resolveAndConnect() {
     // Tier 1: Direct stream parameter if provided
     const directStream = getStreamParam();
     if (directStream) {
+      const candidate = directStream.replace(/[/]+$/, '');
+      let alive = false;
       try {
-        const candidate = directStream.replace(/[/]+$/, '');
-        const testRes = await apiFetch(`${candidate}/status.json?t=${Date.now()}`, { signal: AbortSignal.timeout(3000) });
-        if (testRes.ok || testRes.status === 401 || testRes.status === 403) {
-          activeStreamUrl = candidate;
-          $('cfgStreamUrl').textContent = activeStreamUrl;
-          $('charLoc').textContent = 'connected!';
-          $('liveDot').classList.remove('off');
-          tick();
-          return;
-        }
+        const testRes = await apiFetch(`${candidate}/status.json?t=${Date.now()}`, { signal: AbortSignal.timeout(4500) });
+        alive = testRes.ok || testRes.status === 401 || testRes.status === 403;
       } catch (e) {}
+      if (alive) {
+        activeStreamUrl = candidate;
+        $('cfgStreamUrl').textContent = activeStreamUrl;
+        $('charLoc').textContent = 'connected!';
+        $('liveDot').classList.remove('off');
+        tick();
+        return;
+      }
+      // Gone. Drop it rather than paying for it again: the resolver retries
+      // every four seconds, and a dead address costs the whole budget before
+      // the relay - which knows the new one - is ever asked.
+      localStorage.removeItem('roz_stream_url');
     }
 
-    // Tier 2: Local loopback (instant on PC desktop browser)
-    try {
+    // Tier 2: Local loopback (instant on PC desktop browser).
+    // Only from an http page: an https origin - which is every phone opening
+    // this from GitHub Pages - has this blocked as mixed content before it
+    // leaves the browser, and 127.0.0.1 on a phone is the phone anyway.
+    if (window.location.protocol !== 'https:') try {
       const localRes = await apiFetch(`http://127.0.0.1:8777/status.json?t=${Date.now()}`, { signal: AbortSignal.timeout(1200) });
       if (localRes.ok || localRes.status === 401 || localRes.status === 403) {
         activeStreamUrl = 'http://127.0.0.1:8777';
@@ -1884,12 +1946,22 @@ function selectClient(key) {
 }
 
 // --- Main Real-Time Tick ---
+//
+// One poll in flight at a time. The interval fires every two seconds whether
+// or not the last request came back, and over a phone connection it often has
+// not: those pile up, race each other to render, and exhaust the browser's
+// six-connections-per-host budget so that nothing else on the page can load.
+// Skipping a tick that has nowhere to go costs one stale second.
+let tickInFlight = false;
+
 async function tick() {
   if (authBlocked) return;          // waiting on the pairing dialog
   if (!activeStreamUrl) {
     resolveAndConnect();
     return;
   }
+  if (tickInFlight) return;
+  tickInFlight = true;
 
   try {
     const clientParam = selectedClientKey ? `&client=${encodeURIComponent(selectedClientKey)}` : '';
@@ -2047,10 +2119,34 @@ async function tick() {
     failedPolls++;
     if (failedPolls >= 2) {
       $('charLoc').textContent = 'reconnecting…';
+      // Let the resolver start from scratch. Leaving activeStreamUrl set meant
+      // every later tick kept firing at an address that had stopped answering
+      // - typically a tunnel hostname the PC no longer owns - so the dashboard
+      // never fell through to asking the relay where the PC had moved to.
+      activeStreamUrl = '';
+      failedPolls = 0;
       resolveAndConnect();
     }
+  } finally {
+    tickInFlight = false;
   }
 }
+
+// A phone puts the page to sleep the moment the screen goes off: timers are
+// throttled to a crawl or stopped, so the first thing the player sees on
+// waking it is a dashboard that is minutes stale and, if the tunnel moved
+// while they were away, offline. Poll the moment it comes back rather than
+// waiting out the rest of an interval that may not even be running.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (activeStreamUrl) tick();
+  else if (getRoom() && !authBlocked) resolveAndConnect();
+});
+window.addEventListener('online', () => {
+  // Back on a network, and quite possibly a different one than before.
+  activeStreamUrl = '';
+  if (getRoom() && !authBlocked) resolveAndConnect();
+});
 
 // Initialize
 updateSubPills();
