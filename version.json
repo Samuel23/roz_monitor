@@ -1,14 +1,14 @@
 {
-  "version": "1.9.1",
+  "version": "1.9.2",
   "data_version": "2026.09.09",
   "release_date": "2026-09-09",
-  "changelog": "Fixes the phone dashboard losing its connection mid-session and failing to find the PC again after the browser is closed and reopened.\n\nThe overlay now keeps a connection open for the dashboard instead of opening a new one for every reading. Opening one per reading, several times a second for hours, is what wore out the remote tunnel and took the phone offline while the PC carried on running normally.\n\nOn the phone, every request now has a deadline and only one is in flight at a time, so a slow mobile connection can no longer stall the page into a frozen snapshot. Waking the screen or rejoining a network refreshes immediately instead of waiting out a timer.\n\nThe pairing link is now read once and remembered. Reopening it from a bookmark or history used to send the phone back to the address the PC was at when the QR code was drawn, which is rarely where it still is.\n\nThe PC now keeps telling the relay where it is on a slow heartbeat rather than going quiet after a few minutes, so a phone that has been away for hours can still find it with nothing but the room code and PIN.",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.1/ROZ_Overlay.exe",
-  "exe_size": 13733088,
-  "exe_sha256": "d5fb5bb668a3178846f94a847b63b7f940152a89dce6674a0173afb80f189a3a",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.1/ro_data.bin",
+  "changelog": "Combat metrics were blank for casters. Every number a Magician, Priest or any other skill-based character put on screen went uncounted: damage dealt, best hit and DPS all read zero for an entire session while the character was killing things perfectly well. Only ordinary melee attacks were ever counted.\n\nDamage taken was blank for everyone, for the same reason, and now reads correctly.\n\nMulti-hit skills are now reported the way the game shows them. A ten-bolt Fire Bolt that does 8,080 damage counts 8,080 towards the session total and 808 as the best hit, because 808 is the number that appeared over the monster. The old reading would have claimed a best hit nobody ever saw.\n\nReleased builds are now timestamped when they are signed. They were not, because a self-signed certificate always reports its chain as untrusted and the build read that as the timestamp having failed, then re-signed the file and stripped the good timestamp back off. Without one, a signature stops verifying the day the certificate expires.\n\nThe published dashboard now carries the version it was released with instead of whatever was last typed into it by hand.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.2/ROZ_Overlay.exe",
+  "exe_size": 13742072,
+  "exe_sha256": "d6542eb70a4f94649733d67ee851a34549de9cc85b374841841fbdbf9e9037bf",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.2/ro_data.bin",
   "data_size": 16307840,
   "data_sha256": "befc853606f4a79180acc074b60573b387720b967e3d98442fb9fe34c98c8a52",
   "min_data_version": "2026.09.09",
-  "signature": "yaY1EuY+LDV6e2uG/x8TSwdFSnhVKtxmP6VJoI8Qw6EOVyUu/nzkqi2IolyAsCjX59VlwzXcyrKEGhvsjXxIAA=="
+  "signature": "thTG7c6q0nHp/aZmii9N/osqVX/+RgVSM2v5f9ZW6F2m/VYDgDCbY8q/xRZrdYn6Ah1GLkKXJEPxkydrv3QxBw=="
 }
