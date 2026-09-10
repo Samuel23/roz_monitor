@@ -64,6 +64,14 @@ header {
 }
 .stat-lbl { font-size: 10px; color: var(--dim); }
 .stat-val { font-size: 13px; font-weight: 700; color: var(--fg); }
+/* The raw numbers under a percentage - "2.17M / 2.40M". Tabular figures so the
+   digits do not shuffle sideways as the value ticks up every second. */
+.stat-sub {
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
 .gold { color: var(--gold); }
 .acc { color: var(--acc); }
 .good { color: var(--good); }

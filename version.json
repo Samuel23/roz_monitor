@@ -1,14 +1,14 @@
 {
-  "version": "1.9.3",
+  "version": "1.9.4",
   "data_version": "2026.09.10",
   "release_date": "2026-09-10",
-  "changelog": "The phone dashboard stopped being able to find the PC the longer the PC had been running, which is the \"finding PC\" that came back after everything seemed fine. Three separate faults were feeding each other.\n\nThe dashboard asked the relay for every announcement it still held rather than for recent ones. After one nine-hour session that was 2,532 messages and 645 KB, which a phone on mobile data could not download inside the three seconds it allowed itself. It now asks for the last half hour and gives the answer eight seconds to arrive.\n\nThe PC announced itself every ten seconds for as long as it ran whenever no dashboard had ever connected to it, which is exactly the situation when a phone is failing to connect. That is what built the pile the phone then choked on, so each hour of failure made the next attempt more certain to fail. It now announces quickly only when its address has just changed or a dashboard is genuinely reading it, and settles to once every ten minutes otherwise.\n\nA tunnel that connected but never reported its address was waited on forever. The connection stays alive on its own keepalives, so nothing timed out and nothing retried: the PC sat there reachable by nobody, for as long as it was left running. It now gives up after a minute and builds a fresh tunnel, and it reads the address off the line that announces it rather than expecting one fixed domain name.",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.3/ROZ_Overlay.exe",
-  "exe_size": 13743640,
-  "exe_sha256": "1f746a42c23289b9617950332acfac57c7e7e5ff9462cf9c8d7772c7d5328123",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.3/ro_data.bin",
-  "data_size": 16307840,
-  "data_sha256": "2f1a06db90b8ccd08514b9fb130c5a645ba9f94cbbb17178412a15da0ce455d1",
+  "changelog": "The Experience card now tracks base and job separately. Each has its own percentage, its own current and required exp, its own remaining count and its own time to level, because they advance at different rates and one of them is often already at its cap.\n\nA level at its cap now reads MAX. The server reports \"no next level\" as a requirement of nine hundred quadrillion, and taken at face value that produced a bar stuck at 0.00%, a remaining count in the quintillions and a time to level of roughly 381 million years. The overlay was printing that number for any character with a maxed job.\n\nThe dashboard the overlay serves on your own PC is now the same dashboard that is published on the web. It used to carry a separate, older copy built into the program, so a phone loading the public page and a browser loading the overlay's address were running different software and a fix to one never reached the other. Two smaller differences went with it: the app manifest and service worker disagreed between the two, and the app icon was missing entirely from the local one.\n\nThe dashboard now travels in the data file rather than inside the program. Improvements to it can be delivered as a small data update instead of a whole new download.\n\nMagic and skill damage are recorded correctly, and multi-hit skills are reported the way the game shows them, from the previous update.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.4/ROZ_Overlay.exe",
+  "exe_size": 13232728,
+  "exe_sha256": "25535087e8381eb65ef7e1c4fb2e9a453aa9f7cbb9e9481c79ee4b91407f77eb",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.4/ro_data.bin",
+  "data_size": 17299263,
+  "data_sha256": "6921e7fe6ec4de6ed5c9a21ebcb619c48a331420706a2a228016e49de7a82fb3",
   "min_data_version": "2026.09.10",
-  "signature": "iofSO2TfbTEGQyMj7HwO0h0OFYf/Bf4BUPpzs82s+UAWI9QfVxotIPyO7bmmeDL7ys+GfvexyfwRwoho2ravBA=="
+  "signature": "J52IUiE0PyBmDl/jB6QnApZovPYY+yoTXxzy5bgpZZAvqsMy6NUR+fJX3DGg3YWz3XerYMDbAtKywgUaT6SyDw=="
 }

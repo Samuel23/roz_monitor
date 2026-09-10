@@ -1,6 +1,6 @@
 /**
  * ROZ Live Monitor - Client Application Logic
- * Version: 1.9.3
+ * Version: 1.9.4
  */
 
 const $ = id => document.getElementById(id);
@@ -36,6 +36,39 @@ const dur = s => {
 // having been defined, which threw the moment a kill breakdown was drawn.
 const escapeHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g,
   c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+
+// One half of the experience card: the percentage, the raw exp behind it, how
+// much is left and how long that will take.
+//
+// A level at its cap has no next level, and the server says so with a
+// requirement of 999999999999999999. Read literally that is a bar at 0.00%, a
+// remaining count of a quintillion and a time to level of 381 million years -
+// which is what a maxed job used to show. The overlay now sends `maxed` rather
+// than the sentinel, and a capped track reads MAX with a full bar.
+const EXP_IDS = {
+  b: { pct: 'bpct', bar: 'bbar', exp: 'bexp', tnl: 'expTnl', eta: 'beta' },
+  j: { pct: 'jpct', bar: 'jbar', exp: 'jexp', tnl: 'expTnlJob', eta: 'jeta' },
+};
+
+function drawExpTrack(which, pct, cur, max, maxed, tnl, etaSec) {
+  const id = EXP_IDS[which];
+  if (maxed) {
+    $(id.pct).textContent = 'MAX';
+    $(id.bar).style.width = '100%';
+    $(id.exp).textContent = cur != null ? n(cur) : '-';
+    $(id.tnl).textContent = 'MAX';
+    $(id.eta).textContent = '-';
+    return;
+  }
+  $(id.pct).textContent = pct != null ? pct.toFixed(2) + '%' : '0.00%';
+  $(id.bar).style.width = Math.min(100, Math.max(0, pct || 0)).toFixed(2) + '%';
+  // Both halves abbreviated the same way, so "2.17M / 2.40M" lines up as a
+  // pair the eye can compare without reading every digit.
+  $(id.exp).textContent = (cur != null && max != null)
+    ? `${n(cur)} / ${n(max)}` : (cur != null ? n(cur) : '-');
+  $(id.tnl).textContent = tnl != null ? n(tnl) : '-';
+  $(id.eta).textContent = dur(etaSec);
+}
 
 // --- Pairing Management ---
 //
@@ -2087,17 +2120,18 @@ async function tick() {
     if (prevBaseLv !== null && typeof baseLv === 'number' && baseLv > prevBaseLv) alarmLevelUp();
     prevBaseLv = typeof baseLv === 'number' ? baseLv : prevBaseLv;
 
-    // EXP
+    // EXP. Base and job are shown as two parallel tracks - each with its own
+    // percentage, its own raw exp, its own remaining count and its own time to
+    // level - because they advance at different rates and one of them is
+    // routinely capped while the other is not.
     $('blv').textContent = `Base Lv ${baseLv ?? '-'}`;
     $('jlv').textContent = `Job Lv ${c.job_level ?? '-'}`;
-    $('bpct').textContent = e.base_pct != null ? e.base_pct.toFixed(2) + '%' : '0.00%';
-    $('jpct').textContent = e.job_pct != null ? e.job_pct.toFixed(2) + '%' : '0.00%';
-    $('bbar').style.width = (e.base_pct || 0) + '%';
-    $('jbar').style.width = (e.job_pct || 0) + '%';
+    drawExpTrack('b', e.base_pct, e.base, e.next_base, e.base_maxed,
+                 e.tnl_base, e.eta_base_sec);
+    drawExpTrack('j', e.job_pct, e.job, e.next_job, e.job_maxed,
+                 e.tnl_job, e.eta_job_sec);
     $('bph').textContent = n(e.base_per_hour);
     $('jph').textContent = n(e.job_per_hour);
-    $('expTnl').textContent = e.tnl_base != null ? `TNL: ${n(e.tnl_base)}` : '-';
-    $('beta').textContent = dur(e.eta_base_sec);
     $('killsOverview').textContent = `${(k.kills ?? 0).toLocaleString()} kills`;
 
     // Zeny & Session

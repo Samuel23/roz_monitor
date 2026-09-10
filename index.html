@@ -15,7 +15,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://midgardhub.com" crossorigin>
 <link rel="dns-prefetch" href="https://midgardhub.com">
-<link rel="stylesheet" href="style.css?v=1.9.3">
+<link rel="stylesheet" href="style.css?v=1.9.4">
 </head>
 <body>
 
@@ -61,8 +61,16 @@
   <div class="card">
     <div class="card-title">Experience & Level</div>
     <div class="grid-2" style="margin-bottom: 8px;">
-      <div class="stat-box"><div class="stat-lbl" id="blv">Base Lv -</div><div class="stat-val acc" id="bpct">0.00%</div></div>
-      <div class="stat-box"><div class="stat-lbl" id="jlv">Job Lv -</div><div class="stat-val gold" id="jpct">0.00%</div></div>
+      <div class="stat-box">
+        <div class="stat-lbl" id="blv">Base Lv -</div>
+        <div class="stat-val acc" id="bpct">0.00%</div>
+        <div class="stat-sub" id="bexp">-</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-lbl" id="jlv">Job Lv -</div>
+        <div class="stat-val gold" id="jpct">0.00%</div>
+        <div class="stat-sub" id="jexp">-</div>
+      </div>
     </div>
     <div class="progress-bg" style="margin-bottom: 4px;"><div id="bbar" class="progress-fill" style="background:var(--acc); width:0%;"></div></div>
     <div class="progress-bg" style="margin-bottom: 8px;"><div id="jbar" class="progress-fill" style="background:var(--gold); width:0%;"></div></div>
@@ -72,7 +80,11 @@
     </div>
     <div class="grid-2" style="margin-top: 6px;">
       <div class="stat-box"><div class="stat-lbl">Next Base (TNL)</div><div class="stat-val" id="expTnl">-</div></div>
-      <div class="stat-box"><div class="stat-lbl">Time to Level (ETA)</div><div class="stat-val warn" id="beta">-</div></div>
+      <div class="stat-box"><div class="stat-lbl">Next Job (TNL)</div><div class="stat-val" id="expTnlJob">-</div></div>
+    </div>
+    <div class="grid-2" style="margin-top: 6px;">
+      <div class="stat-box"><div class="stat-lbl">Time to Base Lv</div><div class="stat-val warn" id="beta">-</div></div>
+      <div class="stat-box"><div class="stat-lbl">Time to Job Lv</div><div class="stat-val warn" id="jeta">-</div></div>
     </div>
   </div>
 
@@ -373,6 +385,6 @@
   </div>
 </div>
 
-<script src="app.js?v=1.9.3" defer></script>
+<script src="app.js?v=1.9.4" defer></script>
 </body>
 </html>
