@@ -1,6 +1,6 @@
 /**
  * ROZ Live Monitor - Client Application Logic
- * Version: 1.9.2
+ * Version: 1.9.3
  */
 
 const $ = id => document.getElementById(id);
@@ -282,13 +282,31 @@ async function resolveAndConnect() {
       }
     } catch (e) {}
 
-    // Tier 3: Multi-relay cloud discovery
+    // Tier 3: Multi-relay cloud discovery.
+    //
+    // Ask for a WINDOW, not the whole history. `since=all` returns every
+    // message the relay still holds, and the PC re-announces itself often: on
+    // one nine-hour session that was 2,532 messages and 645 KB, which took
+    // 3.07 seconds to fetch on a desktop and could not finish inside this
+    // three-second budget on a phone at all. The failure fed itself - a phone
+    // that cannot read the relay never connects, a PC with nobody connected
+    // announces at the fast cadence forever, and every hour of that made the
+    // next attempt more certain to time out. Hence "it works, then after a
+    // while it just says finding PC".
+    //
+    // The PC posts at least once every ten minutes whenever its tunnel is up,
+    // so half an hour is three chances to have heard from it and about two
+    // orders of magnitude less to download.
     const servers = ['https://ntfy.envs.net', 'https://ntfy.sh'];
     const topic = `roz_${room.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+    const WINDOW = '30m';
 
     for (const srv of servers) {
       try {
-        const res = await fetch(`${srv}/${encodeURIComponent(topic)}/json?poll=1&since=all`, { signal: AbortSignal.timeout(3000) });
+        // Eight seconds, not three: this is a phone on mobile data reaching a
+        // free relay, and the old budget was tight even when the answer was
+        // small.
+        const res = await fetch(`${srv}/${encodeURIComponent(topic)}/json?poll=1&since=${WINDOW}`, { signal: AbortSignal.timeout(8000) });
         if (res.ok) {
           const text = await res.text();
           const lines = text.trim().split('\n');
