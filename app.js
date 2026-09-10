@@ -1,6 +1,6 @@
 /**
  * ROZ Live Monitor - Client Application Logic
- * Version: 1.9.4
+ * Version: 1.9.5
  */
 
 const $ = id => document.getElementById(id);

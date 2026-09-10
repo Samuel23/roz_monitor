@@ -161,8 +161,8 @@ Official release binary integrity and SHA-256 verification:
 
 | File | Size | SHA-256 Checksum |
 |:---|:---|:---|
-| **`ROZ_Overlay.exe`** | 12.6 MB | `25535087e8381eb65ef7e1c4fb2e9a453aa9f7cbb9e9481c79ee4b91407f77eb` |
-| **`ro_data.bin`** | 16.5 MB | `6921e7fe6ec4de6ed5c9a21ebcb619c48a331420706a2a228016e49de7a82fb3` |
+| **`ROZ_Overlay.exe`** | 12.6 MB | `5a06a839f23c8e2d82be837e2165af02eb4ab96877b87dbfc051a5e2cd2886f2` |
+| **`ro_data.bin`** | 16.5 MB | `9c0d1e583cda6cf897360fc6a8c7d6fcbc7ac071fa26ddad803c2934be0109ef` |
 
 ### ⚠️ Windows will say "unknown publisher" — here is why, and what to do
 

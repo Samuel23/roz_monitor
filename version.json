@@ -1,14 +1,14 @@
 {
-  "version": "1.9.4",
+  "version": "1.9.5",
   "data_version": "2026.09.10",
   "release_date": "2026-09-10",
-  "changelog": "The Experience card now tracks base and job separately. Each has its own percentage, its own current and required exp, its own remaining count and its own time to level, because they advance at different rates and one of them is often already at its cap.\n\nA level at its cap now reads MAX. The server reports \"no next level\" as a requirement of nine hundred quadrillion, and taken at face value that produced a bar stuck at 0.00%, a remaining count in the quintillions and a time to level of roughly 381 million years. The overlay was printing that number for any character with a maxed job.\n\nThe dashboard the overlay serves on your own PC is now the same dashboard that is published on the web. It used to carry a separate, older copy built into the program, so a phone loading the public page and a browser loading the overlay's address were running different software and a fix to one never reached the other. Two smaller differences went with it: the app manifest and service worker disagreed between the two, and the app icon was missing entirely from the local one.\n\nThe dashboard now travels in the data file rather than inside the program. Improvements to it can be delivered as a small data update instead of a whole new download.\n\nMagic and skill damage are recorded correctly, and multi-hit skills are reported the way the game shows them, from the previous update.",
-  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.4/ROZ_Overlay.exe",
-  "exe_size": 13232728,
-  "exe_sha256": "25535087e8381eb65ef7e1c4fb2e9a453aa9f7cbb9e9481c79ee4b91407f77eb",
-  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.4/ro_data.bin",
-  "data_size": 17299263,
-  "data_sha256": "6921e7fe6ec4de6ed5c9a21ebcb619c48a331420706a2a228016e49de7a82fb3",
+  "changelog": "Corrects a packaging fault in 1.9.4. The dashboard carried inside the data file was stamped with a version five releases old, while the copy published on the web carried the right one, so the two were not the identical files 1.9.4 said they were. Everything in 1.9.4 works; this makes the two copies genuinely the same, and adds a check that fails the build if they ever diverge again.\n\n1.9.4 itself brought the following, and all of it stands:\n\nThe Experience card tracks base and job separately. Each has its own percentage, its own current and required exp, its own remaining count and its own time to level, because they advance at different rates and one of them is often already at its cap.\n\nA level at its cap now reads MAX. The server reports \"no next level\" as a requirement of nine hundred quadrillion, and taken at face value that produced a bar stuck at 0.00%, a remaining count in the quintillions and a time to level of roughly 381 million years.\n\nThe dashboard served on your own PC is now the same dashboard published on the web. There used to be a separate, older copy built into the program, so a phone on the public page and a browser on the overlay's address were running different software. The app manifest, the service worker and the app icon all differed too.\n\nThe dashboard travels in the data file rather than inside the program, so improvements to it can be delivered as a small data update instead of a whole new download.",
+  "exe_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.5/ROZ_Overlay.exe",
+  "exe_size": 13232344,
+  "exe_sha256": "5a06a839f23c8e2d82be837e2165af02eb4ab96877b87dbfc051a5e2cd2886f2",
+  "data_url": "https://github.com/Samuel23/roz_monitor/releases/download/v1.9.5/ro_data.bin",
+  "data_size": 17299262,
+  "data_sha256": "9c0d1e583cda6cf897360fc6a8c7d6fcbc7ac071fa26ddad803c2934be0109ef",
   "min_data_version": "2026.09.10",
-  "signature": "J52IUiE0PyBmDl/jB6QnApZovPYY+yoTXxzy5bgpZZAvqsMy6NUR+fJX3DGg3YWz3XerYMDbAtKywgUaT6SyDw=="
+  "signature": "j5w/WkTmPGUDXOL+5NdsYmpZ02iz7selsM9e57ZFJ0coLXlPiNkVapq4mq0+WMN90Ph/kg10StahHU/Pod4jBg=="
 }
